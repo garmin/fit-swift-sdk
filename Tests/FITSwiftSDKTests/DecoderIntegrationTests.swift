@@ -539,4 +539,31 @@ final class DecoderIntegrationTests: XCTestCase {
         XCTAssertEqual(mesgListener.mesgs.count, 1)
         XCTAssertEqual(mesgListener.mesgs[0].fieldCount, 0)
     }
+
+    // MARK: Message Definition Integration Tests
+    func test_whenFieldDefIncludesInvalidFieldSize_fieldDataIsIgnored() throws {
+        let stream = FITSwiftSDK.InputStream(data: fitFileShortInvalidFieldDef)
+        let decoder = Decoder(stream: stream)
+
+        let mesgListener = TestMesgListener()
+        let mesgDefListener = TestMesgDefinitionListener()
+        decoder.addMesgListener(mesgListener)
+        decoder.addMesgDefinitionListener(mesgDefListener)
+
+        try decoder.read();
+
+        XCTAssertEqual(mesgDefListener.mesgDefinitions.count, 1)
+        XCTAssertEqual(mesgDefListener.mesgDefinitions[0].fieldDefinitions.count, 5)
+
+        let invalidFieldDef = mesgDefListener.mesgDefinitions[0].fieldDefinitions[4]
+        XCTAssertEqual(invalidFieldDef.num, 3)
+        XCTAssertEqual(invalidFieldDef.type, BaseType.UINT32.rawValue)
+        XCTAssertEqual(invalidFieldDef.size, 1)
+
+        XCTAssertEqual(mesgListener.mesgs.count, 1)
+
+        let mesg = mesgListener.mesgs[0]
+        XCTAssertEqual(mesg.fieldCount, 4)
+        XCTAssertNil(mesg.getField(fieldNum: invalidFieldDef.num))
+    }
 }
