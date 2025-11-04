@@ -738,6 +738,17 @@ func createTestFieldWithValue(type: BaseType, value: Any?) throws -> Field {
         }
     }
 
+    @Test func test_read_whenSizeIsNotMultipleOfType_readingSkipsSize() throws {
+        let uint32Field = Factory.createDefaultField(fieldNum: 0, baseType: BaseType.UINT32)
+
+        let stream = FITSwiftSDK.InputStream(data: Data([0x01, 0x02, 0x03, 0x04]))
+
+        try uint32Field.read(stream: stream, size: 1)
+
+        #expect(!uint32Field.hasValues)
+        #expect(stream.position == 1)
+    }
+
     @discardableResult
     func readStringFieldWithData(_ data: Data) throws -> Field {
         let stream = FITSwiftSDK.InputStream(data: data)
