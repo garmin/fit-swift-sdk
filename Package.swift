@@ -28,7 +28,10 @@ let package = Package(
         ),
         .testTarget(
             name: "FITSwiftSDKTests",
-            dependencies: ["FITSwiftSDK"]
+            dependencies: ["FITSwiftSDK"],
+            exclude: [
+                "TestData/*.fit"
+            ]
         ),
     ],
     swiftLanguageModes: [.v5, .v6]
