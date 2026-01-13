@@ -1,5 +1,5 @@
 /////////////////////////////////////////////////////////////////////////////////////////////
-// Copyright 2025 Garmin International, Inc.
+// Copyright 2026 Garmin International, Inc.
 // Licensed under the Flexible and Interoperable Data Transfer (FIT) Protocol License; you
 // may not use this file except in compliance with the Flexible and Interoperable Data
 // Transfer (FIT) Protocol License.
@@ -102,7 +102,7 @@ func createTestDeveloperField(developerDataIndex: UInt8 = 0, fieldDefinitionNumb
     @Test("Developer field equatable comparison", arguments: [
         .init(title: "Identical Dev Field", fieldFactory: { try createTestDeveloperField() }, expected: true),
         .init(title: "Dev Field with Different Name", fieldFactory: { try createTestDeveloperField(fieldName: "Field1") }, expected: false),
-        .init(title: "Dev Field with Different Field num", fieldFactory: { try try createTestDeveloperField(fieldDefinitionNumber: 1) }, expected: false),
+        .init(title: "Dev Field with Different Field num", fieldFactory: { try createTestDeveloperField(fieldDefinitionNumber: 1) }, expected: false),
         .init(title: "Dev Field with Different Type", fieldFactory: { try createTestDeveloperField(fitBaseType: FitBaseType.uint8) }, expected: false),
         .init(title: "Dev Field with Different Scale", fieldFactory:  { try createTestDeveloperField(scale: 10) }, expected: false),
         .init(title: "Dev Field with Different Offset", fieldFactory: { try createTestDeveloperField(offset: 100) }, expected: false),

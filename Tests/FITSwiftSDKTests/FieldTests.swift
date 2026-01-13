@@ -1,5 +1,5 @@
 /////////////////////////////////////////////////////////////////////////////////////////////
-// Copyright 2025 Garmin International, Inc.
+// Copyright 2026 Garmin International, Inc.
 // Licensed under the Flexible and Interoperable Data Transfer (FIT) Protocol License; you
 // may not use this file except in compliance with the Flexible and Interoperable Data
 // Transfer (FIT) Protocol License.
@@ -747,6 +747,27 @@ func createTestFieldWithValue(type: BaseType, value: Any?) throws -> Field {
 
         #expect(!uint32Field.hasValues)
         #expect(stream.position == 1)
+    }
+
+    // MARK: Float64 Field Tests
+    @Test func test_whenBaseTypeIsFloat64_littleEndianValueCanBeDecoded() throws {
+        let float64Field = Factory.createDefaultField(fieldNum: 0, baseType: BaseType.FLOAT64)
+
+        let stream = FITSwiftSDK.InputStream(data: Data([0x0, 0x0, 0x0, 0x0, 0x0, 0x80, 0x71, 0x40]))
+
+        try float64Field.read(stream: stream, size: 8)
+        
+        #expect(float64Field.getValue(index: 0) as! Float64 == 280.0)
+    }
+    
+    @Test func test_whenBaseTypeIsFloat64_bigEndianValueCanBeDecoded() throws {
+        let float64Field = Factory.createDefaultField(fieldNum: 0, baseType: BaseType.FLOAT64)
+
+        let stream = FITSwiftSDK.InputStream(data: Data([0x40, 0x71, 0x80, 0x0, 0x0, 0x0, 0x0, 0x0]))
+
+        try float64Field.read(stream: stream, size: 8, endianness: .big)
+        
+        #expect(float64Field.getValue(index: 0) as! Float64 == 280.0)
     }
 
     @discardableResult

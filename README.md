@@ -6,14 +6,14 @@ The FIT SDK documentation is available at [https://developer.garmin.com/fit](htt
 Share your knowledge, ask questions, and get the latest FIT SDK news in the [FIT SDK Developer Forum](https://forums.garmin.com/developer/).
 
 ## FIT Swift SDK Requirements
-The FIT Swift SDK requires macOS 12 or iOS 14 and uses Swift Tools Version 5.9
+The FIT Swift SDK requires macOS 12 or iOS 14 and uses Swift Tools Version 6.0 with version 5 compatibility.
 
 ## Install
 In an Xcode project, select File > Add Package Dependency and enter the source control repository URL: https://github.com/garmin/fit-swift-sdk.git
 
 ## Usage
 After the FIT Swift SDK package has been added as dependency, it can be used by importing the FITSwiftSDK module into the appropriate source files.
-```swift 
+```swift
 import FITSwiftSDK
 ```
 The package includes tests that demonstrate how to use the SDK. These test programs are similar to the [Cookbook](https://developer.garmin.com/fit/cookbook/) recipes.
