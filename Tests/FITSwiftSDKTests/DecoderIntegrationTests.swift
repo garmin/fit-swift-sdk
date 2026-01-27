@@ -6,13 +6,14 @@
 /////////////////////////////////////////////////////////////////////////////////////////////
 
 
-import XCTest
+import Testing
+import Foundation
 @testable import FITSwiftSDK
 
-final class DecoderIntegrationTests: XCTestCase {
+@Suite struct DecoderIntegrationTests {
 
     // MARK: MesgBroadcaster Integration Tests
-    func test_whenBroadcastersWithListenersAreAddedToDecoder_mesgsShouldBeBroadcastedToListeners() throws {
+    @Test func test_whenBroadcastersWithListenersAreAddedToDecoder_mesgsShouldBeBroadcastedToListeners() throws {
         let stream = FITSwiftSDK.InputStream(data: fitFileShort)
         let decoder = Decoder(stream: stream)
 
@@ -23,10 +24,10 @@ final class DecoderIntegrationTests: XCTestCase {
         decoder.addMesgListener(mesgBroadcaster)
         try decoder.read()
 
-        XCTAssertEqual(mesgListener.fileIdMesgs.count, 1)
+        #expect(mesgListener.fileIdMesgs.count == 1)
     }
 
-    func test_fileContainsUnknownMessages_onMesgShouldNotThrow() throws {
+    @Test func test_fileContainsUnknownMessages_onMesgShouldNotThrow() throws {
         let stream = FITSwiftSDK.InputStream(data: fitFileShortUnknownMesg)
         let decoder = Decoder(stream: stream)
 
@@ -37,12 +38,12 @@ final class DecoderIntegrationTests: XCTestCase {
         decoder.addMesgListener(mesgBroadcaster)
         try decoder.read()
 
-        XCTAssertEqual(mesgListener.mesgs.count, 2)
-        XCTAssertEqual(mesgListener.mesgs[0].mesgNum, MesgNum.fileId.rawValue)
-        XCTAssertEqual(mesgListener.mesgs[1].mesgNum, 1234)
+        #expect(mesgListener.mesgs.count == 2)
+        #expect(mesgListener.mesgs[0].mesgNum == MesgNum.fileId.rawValue)
+        #expect(mesgListener.mesgs[1].mesgNum == 1234)
     }
 
-    func test_whenBroadcastersWithThrowableListenersAreAddedToDecoder_listenerErrorsShouldBeRethrown() throws {
+    @Test func test_whenBroadcastersWithThrowableListenersAreAddedToDecoder_listenerErrorsShouldBeRethrown() throws {
         let stream = FITSwiftSDK.InputStream(data: fitFileShort)
         let decoder = Decoder(stream: stream)
 
@@ -57,15 +58,15 @@ final class DecoderIntegrationTests: XCTestCase {
             try decoder.read()
         }
         catch TestShortCircuitError.fileIdMesgFound(let fileIdMesg) {
-            XCTAssertEqual(fileIdMesg.getType(), File.activity)
+            #expect(fileIdMesg.getType() == File.activity)
 
             // The decoder should be short circuited and not have read completely
-            XCTAssertNotEqual(stream.position, stream.count)
+            #expect(stream.position != stream.count)
         }
     }
 
     // MARK: BufferedMesgBroadcaster Integration Tests
-    func test_whenBroadcastersWithListenersAreAddedToDecoder_mesgsShouldBeBroadcastedAfterBroadcast() throws {
+    @Test func test_whenBroadcastersWithListenersAreAddedToDecoder_mesgsShouldBeBroadcastedAfterBroadcast() throws {
         let stream = FITSwiftSDK.InputStream(data: fitFileShort)
         let decoder = Decoder(stream: stream)
 
@@ -77,14 +78,14 @@ final class DecoderIntegrationTests: XCTestCase {
         try decoder.read()
 
         // The bufferedBroadcaster hasn't yet broadcast its messages to its listeners
-        XCTAssertEqual(mesgListener.fileIdMesgs.count, 0)
+        #expect(mesgListener.fileIdMesgs.count == 0)
 
         try bufferedMesgBroadcaster.broadcast()
-        XCTAssertEqual(mesgListener.fileIdMesgs.count, 1)
+        #expect(mesgListener.fileIdMesgs.count == 1)
     }
 
     // MARK: Mesg Listener Integration Tests
-    func test_whenDescriptionListenersAreAddedAndFileHasDevData_descriptionsAreBroadcastedToListeners() throws {
+    @Test func test_whenDescriptionListenersAreAddedAndFileHasDevData_descriptionsAreBroadcastedToListeners() throws {
         let stream = FITSwiftSDK.InputStream(data: fitFileShortDevData)
         let decoder = Decoder(stream: stream)
 
@@ -93,14 +94,14 @@ final class DecoderIntegrationTests: XCTestCase {
 
         try decoder.read()
 
-        XCTAssertEqual(descriptionListener.fitMessages.developerFieldDescriptionMesgs.count, 1)
+        #expect(descriptionListener.fitMessages.developerFieldDescriptionMesgs.count == 1)
 
         let description = descriptionListener.fitMessages.developerFieldDescriptionMesgs[0]
-        XCTAssertEqual(description.developerDataIndex, 0)
-        XCTAssertEqual(description.fieldDefinitionNumber, 1)
+        #expect(description.developerDataIndex == 0)
+        #expect(description.fieldDefinitionNumber == 1)
     }
 
-    func test_whenMesgListenersAreAddedToDecoder_mesgsAreBroadcastedToListeners() throws {
+    @Test func test_whenMesgListenersAreAddedToDecoder_mesgsAreBroadcastedToListeners() throws {
         let stream = FITSwiftSDK.InputStream(data: fitFileShort)
         let decoder = Decoder(stream: stream)
 
@@ -109,32 +110,30 @@ final class DecoderIntegrationTests: XCTestCase {
 
         try decoder.read();
 
-        XCTAssertEqual(mesgListener.mesgs.count, 1)
+        #expect(mesgListener.mesgs.count == 1)
 
         let fileIdMesg = FileIdMesg(mesg: mesgListener.mesgs[0])
 
-        NSLog("%d", fileIdMesg.mesgNum)
+        #expect(fileIdMesg.mesgNum == 0)
 
-        XCTAssertEqual(fileIdMesg.mesgNum, 0)
+        #expect(fileIdMesg.getType() == .activity)
 
-        XCTAssertEqual(fileIdMesg.getType(), .activity)
-
-        XCTAssertEqual(fileIdMesg.getProductName(), "abcdefghi")
+        #expect(fileIdMesg.getProductName() == "abcdefghi")
 
         try fileIdMesg.setType(File.device)
-        XCTAssertEqual(fileIdMesg.getType(), .device)
+        #expect(fileIdMesg.getType() == .device)
 
-        XCTAssertEqual(fileIdMesg.getSerialNumber(), nil)
+        #expect(fileIdMesg.getSerialNumber() == nil)
 
         try fileIdMesg.setSerialNumber(1234)
-        XCTAssertEqual(fileIdMesg.getSerialNumber(), 1234)
+        #expect(fileIdMesg.getSerialNumber() == 1234)
 
         try fileIdMesg.setSerialNumber(4321)
-        XCTAssertEqual(fileIdMesg.getSerialNumber(), 4321)
+        #expect(fileIdMesg.getSerialNumber() == 4321)
     }
 
     // MARK: SubField Integration Tests
-    func test_whenFileIdMesgProductSubfieldWithMissingManufacturerReferenceMesg_getSubfieldReturnsNil() throws {
+    @Test func test_whenFileIdMesgProductSubfieldWithMissingManufacturerReferenceMesg_getSubfieldReturnsNil() throws {
         let stream = FITSwiftSDK.InputStream(data: fileIdMesgGarminProductSubfieldWithoutManufacturer)
         let decoder = Decoder(stream: stream)
 
@@ -148,15 +147,15 @@ final class DecoderIntegrationTests: XCTestCase {
         let faveroProductSubField = productField?.getSubField(subFieldName: "FaveroProduct")
         let garminProductSubField = productField?.getSubField(subFieldName: "GarminProduct")
 
-        XCTAssertNil(fileIdMesg.getManufacturer())
-        XCTAssertFalse(try faveroProductSubField!.canMesgSupport(mesg: fileIdMesg))
-        XCTAssertFalse(try garminProductSubField!.canMesgSupport(mesg: fileIdMesg))
-        XCTAssertNil(try fileIdMesg.getGarminProduct())
-        XCTAssertNil(try fileIdMesg.getFaveroProduct())
-        XCTAssertEqual(fileIdMesg.getProduct(), 4536)
+        #expect(fileIdMesg.getManufacturer() == nil)
+        #expect(try faveroProductSubField!.canMesgSupport(mesg: fileIdMesg) == false)
+        #expect(try garminProductSubField!.canMesgSupport(mesg: fileIdMesg) == false)
+        #expect(try fileIdMesg.getGarminProduct() == nil)
+        #expect(try fileIdMesg.getFaveroProduct() == nil)
+        #expect(fileIdMesg.getProduct() == 4536)
     }
 
-    func test_whenFileIdMesgProductSubfieldWithIncompatibleManufacturerType_getSubfieldReturnsNil() throws {
+    @Test func test_whenFileIdMesgProductSubfieldWithIncompatibleManufacturerType_getSubfieldReturnsNil() throws {
         let stream = FITSwiftSDK.InputStream(data: fileIdMesgGarminProductSubfieldWithDevelopmentManufacturer)
         let decoder = Decoder(stream: stream)
 
@@ -170,15 +169,15 @@ final class DecoderIntegrationTests: XCTestCase {
         let faveroProductSubField = productField?.getSubField(subFieldName: "FaveroProduct")
         let garminProductSubField = productField?.getSubField(subFieldName: "GarminProduct")
 
-        XCTAssertEqual(fileIdMesg.getManufacturer(), .development)
-        XCTAssertFalse(try faveroProductSubField!.canMesgSupport(mesg: fileIdMesg))
-        XCTAssertFalse(try garminProductSubField!.canMesgSupport(mesg: fileIdMesg))
-        XCTAssertNil(try fileIdMesg.getGarminProduct())
-        XCTAssertNil(try fileIdMesg.getFaveroProduct())
-        XCTAssertEqual(fileIdMesg.getProduct(), 4536)
+        #expect(fileIdMesg.getManufacturer() == .development)
+        #expect(try faveroProductSubField!.canMesgSupport(mesg: fileIdMesg) == false)
+        #expect(try garminProductSubField!.canMesgSupport(mesg: fileIdMesg) == false)
+        #expect(try fileIdMesg.getGarminProduct() == nil)
+        #expect(try fileIdMesg.getFaveroProduct() == nil)
+        #expect(fileIdMesg.getProduct() == 4536)
     }
 
-    func test_whenFileIdMesgProductSubfieldWithGarminManufacturerType_getSubfieldShouldReturnGarminProduct() throws {
+    @Test func test_whenFileIdMesgProductSubfieldWithGarminManufacturerType_getSubfieldShouldReturnGarminProduct() throws {
         let stream = FITSwiftSDK.InputStream(data: fileIdMesgGarminProductSubfieldWithGarminManufacturer)
         let decoder = Decoder(stream: stream)
 
@@ -192,59 +191,59 @@ final class DecoderIntegrationTests: XCTestCase {
         let faveroProductSubField = productField?.getSubField(subFieldName: "FaveroProduct")
         let garminProductSubField = productField?.getSubField(subFieldName: "GarminProduct")
 
-        XCTAssertEqual(fileIdMesg.getManufacturer(), .garmin)
-        XCTAssertFalse(try faveroProductSubField!.canMesgSupport(mesg: fileIdMesg))
-        XCTAssertTrue(try garminProductSubField!.canMesgSupport(mesg: fileIdMesg))
-        XCTAssertEqual(try fileIdMesg.getGarminProduct(), .fenix8)
-        XCTAssertNil(try fileIdMesg.getFaveroProduct())
-        XCTAssertEqual(fileIdMesg.getProduct(), 4536)
+        #expect(fileIdMesg.getManufacturer() == .garmin)
+        #expect(try faveroProductSubField!.canMesgSupport(mesg: fileIdMesg) == false)
+        #expect(try garminProductSubField!.canMesgSupport(mesg: fileIdMesg) == true)
+        #expect(try fileIdMesg.getGarminProduct() == .fenix8)
+        #expect(try fileIdMesg.getFaveroProduct() == nil)
+        #expect(fileIdMesg.getProduct() == 4536)
     }
 
-    func test_whenSubFieldTypeIsDifferentThanMainField_getSubFieldShouldReturnValue() throws {
+    @Test func test_whenSubFieldTypeIsDifferentThanMainField_getSubFieldShouldReturnValue() throws {
         let eventMesg = EventMesg()
         try eventMesg.setData(1234)
 
-        XCTAssertEqual(eventMesg.getData(), 1234)
+        #expect(eventMesg.getData() == 1234)
 
         try eventMesg.setEvent(.autoActivityDetect)
 
-        XCTAssertEqual(eventMesg.getData(), 1234)
-        XCTAssertEqual(try eventMesg.getAutoActivityDetectDuration(), 1234)
+        #expect(eventMesg.getData() == 1234)
+        #expect(try eventMesg.getAutoActivityDetectDuration() == 1234)
     }
 
-    func test_whenSubFieldTypeIsDifferentThanMainFieldAndValueInvalid_getSubFieldShouldReturnNil() throws {
+    @Test func test_whenSubFieldTypeIsDifferentThanMainFieldAndValueInvalid_getSubFieldShouldReturnNil() throws {
         let eventMesg = EventMesg()
         try eventMesg.setData(BaseType.UINT32.invalidValue())
 
-        XCTAssertNil(eventMesg.getData())
+        #expect(eventMesg.getData() == nil)
 
         try eventMesg.setEvent(.autoActivityDetect)
-        XCTAssertNil(try eventMesg.getAutoActivityDetectDuration())
+        #expect(try eventMesg.getAutoActivityDetectDuration() == nil)
     }
 
-    func test_whenSubFieldMainFieldIsEmpty_getSubFieldShouldReturnNil() throws {
+    @Test func test_whenSubFieldMainFieldIsEmpty_getSubFieldShouldReturnNil() throws {
         let eventMesg = EventMesg()
 
-        XCTAssertNil(eventMesg.getData())
+        #expect(eventMesg.getData() == nil)
 
         try eventMesg.setEvent(.autoActivityDetect)
 
-        XCTAssertNil(try eventMesg.getAutoActivityDetectDuration())
+        #expect(try eventMesg.getAutoActivityDetectDuration() == nil)
     }
 
-    func test_whenSubFieldTypeIsDifferentThanMainFieldAndValueTooLarge_getSubFieldShouldReturnNil() throws {
+    @Test func test_whenSubFieldTypeIsDifferentThanMainFieldAndValueTooLarge_getSubFieldShouldReturnNil() throws {
         let eventMesg = EventMesg()
         try eventMesg.setData(0xABCDE)
 
-        XCTAssertEqual(eventMesg.getData(), 0xABCDE)
+        #expect(eventMesg.getData() == 0xABCDE)
 
         try eventMesg.setEvent(.autoActivityDetect)
 
-        XCTAssertNil(try eventMesg.getAutoActivityDetectDuration())
+        #expect(try eventMesg.getAutoActivityDetectDuration() == nil)
     }
 
     // MARK: Component Expansion Integration Tests
-    func test_whenFieldsContainComponents_componentsAreExpanded() throws {
+    @Test func test_whenFieldsContainComponents_componentsAreExpanded() throws {
         let recordMesgIn = RecordMesg()
         try recordMesgIn.setAltitude(22)
         try recordMesgIn.setSpeed(2)
@@ -261,20 +260,20 @@ final class DecoderIntegrationTests: XCTestCase {
         try decoder.read();
 
         let recordMesgOut = RecordMesg(mesg: mesgListener.mesgs[0])
-        XCTAssertEqual(recordMesgOut.getAltitude(), recordMesgIn.getAltitude())
-        XCTAssertEqual(recordMesgOut.getSpeed(), recordMesgIn.getSpeed())
+        #expect(recordMesgOut.getAltitude() == recordMesgIn.getAltitude())
+        #expect(recordMesgOut.getSpeed() == recordMesgIn.getSpeed())
 
-        XCTAssertEqual(recordMesgOut.getEnhancedAltitude(), recordMesgIn.getAltitude())
-        XCTAssertEqual(recordMesgOut.getEnhancedSpeed(), recordMesgIn.getSpeed())
+        #expect(recordMesgOut.getEnhancedAltitude() == recordMesgIn.getAltitude())
+        #expect(recordMesgOut.getEnhancedSpeed() == recordMesgIn.getSpeed())
     }
 
-    func test_whenSubFieldsContainComponents_componentsAreExpanded() throws {
+    @Test func test_whenSubFieldsContainComponents_componentsAreExpanded() throws {
         let eventMesgIn = EventMesg()
         try eventMesgIn.setEvent(.rearGearChange)
         try eventMesgIn.setData(385816581)
 
         // Check that the subfield is GearChangeData
-        XCTAssertNotNil(try eventMesgIn.getGearChangeData())
+        #expect(try eventMesgIn.getGearChangeData() != nil)
 
         let encoder = Encoder();
         encoder.onMesg(eventMesgIn)
@@ -288,16 +287,16 @@ final class DecoderIntegrationTests: XCTestCase {
         try decoder.read();
 
         let eventMesgOut = EventMesg(mesg: mesgListener.mesgs[0])
-        XCTAssertEqual(eventMesgOut.getData(), eventMesgIn.getData())
-        XCTAssertEqual(try eventMesgOut.getGearChangeData(), try eventMesgIn.getGearChangeData())
+        #expect(eventMesgOut.getData() == eventMesgIn.getData())
+        #expect(try eventMesgOut.getGearChangeData() == (try eventMesgIn.getGearChangeData()))
 
-        XCTAssertEqual(eventMesgOut.getRearGear(), 24)
-        XCTAssertEqual(eventMesgOut.getRearGearNum(), 5)
-        XCTAssertEqual(eventMesgOut.getFrontGear(), 22)
-        XCTAssertEqual(eventMesgOut.getFrontGearNum(), 255)
+        #expect(eventMesgOut.getRearGear() == 24)
+        #expect(eventMesgOut.getRearGearNum() == 5)
+        #expect(eventMesgOut.getFrontGear() == 22)
+        #expect(eventMesgOut.getFrontGearNum() == 255)
     }
 
-    func test_whenExpandedComponentsFieldsAreEnums_componentsAreExpandedIntoEnumTypes() throws {
+    @Test func test_whenExpandedComponentsFieldsAreEnums_componentsAreExpandedIntoEnumTypes() throws {
         let stream = FITSwiftSDK.InputStream(data: fitFileMonitoringData)
         let decoder = Decoder(stream: stream)
 
@@ -307,33 +306,33 @@ final class DecoderIntegrationTests: XCTestCase {
         try decoder.read();
 
         var monitoringMesg = MonitoringMesg(mesg: mesgListener.mesgs[0])
-        XCTAssertEqual(monitoringMesg.getActivityType(), .running)
-        XCTAssertEqual(monitoringMesg.getIntensity(), 3)
-        XCTAssertEqual(monitoringMesg.getCycles(), 10)
-        XCTAssertEqual(try monitoringMesg.getSteps(), 20)
+        #expect(monitoringMesg.getActivityType() == .running)
+        #expect(monitoringMesg.getIntensity() == 3)
+        #expect(monitoringMesg.getCycles() == 10)
+        #expect(try monitoringMesg.getSteps() == 20)
 
         monitoringMesg = MonitoringMesg(mesg: mesgListener.mesgs[1])
-        XCTAssertEqual(monitoringMesg.getActivityType(), .walking)
-        XCTAssertEqual(monitoringMesg.getIntensity(), 0)
-        XCTAssertEqual(monitoringMesg.getCycles(), 30)
-        XCTAssertEqual(try monitoringMesg.getSteps(), 60)
+        #expect(monitoringMesg.getActivityType() == .walking)
+        #expect(monitoringMesg.getIntensity() == 0)
+        #expect(monitoringMesg.getCycles() == 30)
+        #expect(try monitoringMesg.getSteps() == 60)
 
         monitoringMesg = MonitoringMesg(mesg: mesgListener.mesgs[2])
-        XCTAssertEqual(monitoringMesg.getActivityType(), .invalid)
-        XCTAssertEqual(monitoringMesg.getIntensity(), 0)
-        XCTAssertEqual(monitoringMesg.getCycles(), 15)
-        XCTAssertNil(try monitoringMesg.getSteps())
+        #expect(monitoringMesg.getActivityType() == .invalid)
+        #expect(monitoringMesg.getIntensity() == 0)
+        #expect(monitoringMesg.getCycles() == 15)
+        #expect(try monitoringMesg.getSteps() == nil)
 
         monitoringMesg = MonitoringMesg(mesg: mesgListener.mesgs[3])
-        XCTAssertNil(monitoringMesg.getActivityType())
-        XCTAssertNil(monitoringMesg.getIntensity())
-        XCTAssertEqual(monitoringMesg.getCycles(), 15)
-        XCTAssertNil(try monitoringMesg.getSteps())
+        #expect(monitoringMesg.getActivityType() == nil)
+        #expect(monitoringMesg.getIntensity() == nil)
+        #expect(monitoringMesg.getCycles() == 15)
+        #expect(try monitoringMesg.getSteps() == nil)
         return
     }
 
     // MARK: Accumulation Integration Tests
-    func test_whenExpandedComponentsAreSetToBeAccumulated_fieldsAreAccumulated() throws {
+    @Test func test_whenExpandedComponentsAreSetToBeAccumulated_fieldsAreAccumulated() throws {
         let encoder = Encoder();
         let recordMesg = RecordMesg()
 
@@ -351,12 +350,12 @@ final class DecoderIntegrationTests: XCTestCase {
 
         try decoder.read();
 
-        XCTAssertEqual(RecordMesg(mesg: mesgListener.mesgs[0]).getTotalCycles(), 254)
-        XCTAssertEqual(RecordMesg(mesg: mesgListener.mesgs[1]).getTotalCycles(), 256)
-        XCTAssertEqual(RecordMesg(mesg: mesgListener.mesgs[2]).getTotalCycles(), 257)
+        #expect(RecordMesg(mesg: mesgListener.mesgs[0]).getTotalCycles() == 254)
+        #expect(RecordMesg(mesg: mesgListener.mesgs[1]).getTotalCycles() == 256)
+        #expect(RecordMesg(mesg: mesgListener.mesgs[2]).getTotalCycles() == 257)
     }
 
-    func test_whenAccumulatedComponentHasInvalidValue_invalidAccumulatedValuesReturnNilAndAreNotAccumulated() throws {
+    @Test func test_whenAccumulatedComponentHasInvalidValue_invalidAccumulatedValuesReturnNilAndAreNotAccumulated() throws {
         let encoder = Encoder();
         let recordMesg = RecordMesg()
 
@@ -374,13 +373,13 @@ final class DecoderIntegrationTests: XCTestCase {
 
         try decoder.read();
 
-        XCTAssertEqual(RecordMesg(mesg: mesgListener.mesgs[0]).getTotalCycles(), 254)
-        XCTAssertNil(RecordMesg(mesg: mesgListener.mesgs[1]).getTotalCycles())
-        XCTAssertEqual(RecordMesg(mesg: mesgListener.mesgs[2]).getTotalCycles(), 257)
+        #expect(RecordMesg(mesg: mesgListener.mesgs[0]).getTotalCycles() == 254)
+        #expect(RecordMesg(mesg: mesgListener.mesgs[1]).getTotalCycles() == nil)
+        #expect(RecordMesg(mesg: mesgListener.mesgs[2]).getTotalCycles() == 257)
     }
 
     // MARK: Developer Data Integration Tests
-    func test_whenFileHasDeveloperData_devFieldsAreAddedToMesgs() throws {
+    @Test func test_whenFileHasDeveloperData_devFieldsAreAddedToMesgs() throws {
         let stream = FITSwiftSDK.InputStream(data: fitFileShortDevData)
         let decoder = Decoder(stream: stream)
 
@@ -389,12 +388,12 @@ final class DecoderIntegrationTests: XCTestCase {
 
         try decoder.read();
 
-        XCTAssertEqual(mesgListener.mesgs.count, 3)
-        XCTAssertEqual(mesgListener.mesgs[2].fieldCount, 1)
-        XCTAssertEqual(mesgListener.mesgs[2].devFieldCount, 1)
+        #expect(mesgListener.mesgs.count == 3)
+        #expect(mesgListener.mesgs[2].fieldCount == 1)
+        #expect(mesgListener.mesgs[2].devFieldCount == 1)
     }
 
-    func test_whenFileHasMultipleDeveloperFields_devFieldsAreAddedToMesgs() throws {
+    @Test func test_whenFileHasMultipleDeveloperFields_devFieldsAreAddedToMesgs() throws {
         let stream = FITSwiftSDK.InputStream(data: fitFileDevDataShortTwoFields)
         let decoder = Decoder(stream: stream)
 
@@ -403,22 +402,24 @@ final class DecoderIntegrationTests: XCTestCase {
 
         try decoder.read();
 
-        XCTAssertEqual(mesgListener.mesgs.count, 4)
-        XCTAssertEqual(mesgListener.mesgs[3].fieldCount, 1)
-        XCTAssertEqual(mesgListener.mesgs[3].devFieldCount, 2)
+        #expect(mesgListener.mesgs.count == 4)
+        #expect(mesgListener.mesgs[3].fieldCount == 1)
+        #expect(mesgListener.mesgs[3].devFieldCount == 2)
     }
 
-    func test_whenDeveloperDataReadWithIncorrectIndex_throwError() throws {
+    @Test func test_whenDeveloperDataReadWithIncorrectIndex_throwError() throws {
         let stream = FITSwiftSDK.InputStream(data: fitFileDevDataIncorrectDeveloperDataIndex)
         let decoder = Decoder(stream: stream)
 
         let mesgListener = TestMesgListener()
         decoder.addMesgListener(mesgListener)
 
-        XCTAssertThrowsError(try decoder.read())
+        #expect(throws: (any Error).self) {
+            try decoder.read()
+        }
     }
 
-    func test_whenFileHasDevDataApplicationId_applicationIdIsReadAndValidUuid() throws {
+    @Test func test_whenFileHasDevDataApplicationId_applicationIdIsReadAndValidUuid() throws {
         let expectedUuid = "03020100-0504-0706-0809-0A0B0C0D0E0F"
 
         let stream = FITSwiftSDK.InputStream(data: fitFileDevDataApplicationId)
@@ -429,16 +430,16 @@ final class DecoderIntegrationTests: XCTestCase {
 
         try decoder.read();
 
-        XCTAssertEqual(developerFieldDescriptionListener.fitMessages.developerFieldDescriptionMesgs.count, 2)
+        #expect(developerFieldDescriptionListener.fitMessages.developerFieldDescriptionMesgs.count == 2)
 
-        XCTAssertEqual(developerFieldDescriptionListener.fitMessages.developerFieldDescriptionMesgs[0].applicationId,
+        #expect(developerFieldDescriptionListener.fitMessages.developerFieldDescriptionMesgs[0].applicationId ==
                        developerFieldDescriptionListener.fitMessages.developerFieldDescriptionMesgs[1].applicationId)
 
-        XCTAssertEqual(developerFieldDescriptionListener.fitMessages.developerFieldDescriptionMesgs[0].applicationId?.uuidString, expectedUuid)
+        #expect(developerFieldDescriptionListener.fitMessages.developerFieldDescriptionMesgs[0].applicationId?.uuidString == expectedUuid)
     }
 
     // MARK: Endianness Integration Tests
-    func test_whenTwoFilesAreIdenticalButEndiannessOfEachAreDifferent_decoderOutputShouldBeEqual() throws {
+    @Test func test_whenTwoFilesAreIdenticalButEndiannessOfEachAreDifferent_decoderOutputShouldBeEqual() throws {
         // Read the file with Little-Endian messages
         let streamLittle = FITSwiftSDK.InputStream(data: fitFileShortDevDataLittleEndian)
         let decoderLittle = Decoder(stream: streamLittle)
@@ -462,30 +463,30 @@ final class DecoderIntegrationTests: XCTestCase {
         let recordMesgBig = mesgListenerBig.fitMessages.recordMesgs[0]
 
         // Assert that all message definitions and their field definitions are equal
-        XCTAssertEqual(mesgDefinitionListenerLittle.mesgDefinitions, mesgDefinitionListenerBig.mesgDefinitions)
-        XCTAssertEqual(mesgDefinitionListenerLittle.mesgDefinitions.count, mesgDefinitionListenerBig.mesgDefinitions.count)
-        XCTAssertTrue(mesgDefinitionListenerLittle.mesgDefinitions == mesgDefinitionListenerBig.mesgDefinitions)
+        #expect(mesgDefinitionListenerLittle.mesgDefinitions == mesgDefinitionListenerBig.mesgDefinitions)
+        #expect(mesgDefinitionListenerLittle.mesgDefinitions.count == mesgDefinitionListenerBig.mesgDefinitions.count)
+        #expect((mesgDefinitionListenerLittle.mesgDefinitions == mesgDefinitionListenerBig.mesgDefinitions) == true)
 
 
         // Assert that their record messages have equal multi-byte values and field counts
-        XCTAssertEqual(recordMesgLittle.fieldCount, recordMesgBig.fieldCount)
-        XCTAssertEqual(recordMesgLittle.devFieldCount, recordMesgBig.devFieldCount)
-        XCTAssertEqual(recordMesgLittle.getPower(), recordMesgBig.getPower())
+        #expect(recordMesgLittle.fieldCount == recordMesgBig.fieldCount)
+        #expect(recordMesgLittle.devFieldCount == recordMesgBig.devFieldCount)
+        #expect(recordMesgLittle.getPower() == recordMesgBig.getPower())
 
         let developerDataIdMesg = mesgListenerBig.fitMessages.developerDataIdMesgs[0]
         let fieldDescriptionMesg = mesgListenerBig.fitMessages.fieldDescriptionMesgs[0]
 
-        XCTAssertEqual(developerDataIdMesg.getDeveloperDataIndex(), fieldDescriptionMesg.getDeveloperDataIndex())
+        #expect(developerDataIdMesg.getDeveloperDataIndex() == fieldDescriptionMesg.getDeveloperDataIndex())
 
         // Assert that their multi-byte developer fields are also equal
         let devValueLittle = recordMesgLittle.getDeveloperField(developerDataIdMesg: developerDataIdMesg, fieldDescriptionMesg: fieldDescriptionMesg)
         let devValueBig = recordMesgBig.getDeveloperField(developerDataIdMesg: developerDataIdMesg, fieldDescriptionMesg: fieldDescriptionMesg)
 
-        XCTAssertEqual(devValueLittle, devValueBig)
+        #expect(devValueLittle == devValueBig)
     }
 
     // MARK: DecoderMesgIndex Integration Tests
-    func test_decoderRead_incrementsMesgDecoderMesgIndex() throws {
+    @Test func test_decoderRead_incrementsMesgDecoderMesgIndex() throws {
         let encodedData = try encodeRecordMesgs()
 
         let stream = FITSwiftSDK.InputStream(data: encodedData)
@@ -498,7 +499,7 @@ final class DecoderIntegrationTests: XCTestCase {
         try decoder.read()
 
         for (index, mesg) in mesgListener.mesgs.enumerated() {
-            XCTAssertEqual(mesg.decoderMesgIndex, index)
+            #expect(mesg.decoderMesgIndex == index)
         }
     }
 
@@ -521,7 +522,7 @@ final class DecoderIntegrationTests: XCTestCase {
         return encodedData
     }
 
-    func test_whenFieldIncludesInvalidFloatingPointValues_fieldIsNotAddedToMesg() throws {
+    @Test func test_whenFieldIncludesInvalidFloatingPointValues_fieldIsNotAddedToMesg() throws {
         let fitFile = Data([
             0x0E, 0x20, 0x8B, 0x08, 0x0D, 0x00, 0x00, 0x00, 0x2E, 0x46, 0x49, 0x54, 0x8E, 0xA3, // File Header - 14 Bytes
             0x40, 0x00, 0x00, 0x00, 0x00, 0x01, 0x0B, 0x04, 0x88, // Message Definition - 9 bytes
@@ -536,12 +537,12 @@ final class DecoderIntegrationTests: XCTestCase {
 
         try decoder.read();
 
-        XCTAssertEqual(mesgListener.mesgs.count, 1)
-        XCTAssertEqual(mesgListener.mesgs[0].fieldCount, 0)
+        #expect(mesgListener.mesgs.count == 1)
+        #expect(mesgListener.mesgs[0].fieldCount == 0)
     }
 
     // MARK: Message Definition Integration Tests
-    func test_whenFieldDefIncludesInvalidFieldSize_fieldDataIsIgnored() throws {
+    @Test func test_whenFieldDefIncludesInvalidFieldSize_fieldDataIsIgnored() throws {
         let stream = FITSwiftSDK.InputStream(data: fitFileShortInvalidFieldDef)
         let decoder = Decoder(stream: stream)
 
@@ -552,18 +553,79 @@ final class DecoderIntegrationTests: XCTestCase {
 
         try decoder.read();
 
-        XCTAssertEqual(mesgDefListener.mesgDefinitions.count, 1)
-        XCTAssertEqual(mesgDefListener.mesgDefinitions[0].fieldDefinitions.count, 5)
+        #expect(mesgDefListener.mesgDefinitions.count == 1)
+        #expect(mesgDefListener.mesgDefinitions[0].fieldDefinitions.count == 5)
 
         let invalidFieldDef = mesgDefListener.mesgDefinitions[0].fieldDefinitions[4]
-        XCTAssertEqual(invalidFieldDef.num, 3)
-        XCTAssertEqual(invalidFieldDef.type, BaseType.UINT32.rawValue)
-        XCTAssertEqual(invalidFieldDef.size, 1)
+        #expect(invalidFieldDef.num == 3)
+        #expect(invalidFieldDef.type == BaseType.UINT32.rawValue)
+        #expect(invalidFieldDef.size == 1)
 
-        XCTAssertEqual(mesgListener.mesgs.count, 1)
+        #expect(mesgListener.mesgs.count == 1)
 
         let mesg = mesgListener.mesgs[0]
-        XCTAssertEqual(mesg.fieldCount, 4)
-        XCTAssertNil(mesg.getField(fieldNum: invalidFieldDef.num))
+        #expect(mesg.fieldCount == 4)
+        #expect(mesg.getField(fieldNum: invalidFieldDef.num) == nil)
+    }
+    
+    // MARK: Bit Mask Integration Tests
+    struct leftRightBalanceTestData: Sendable {
+        let title: String
+        let mesgIndex: Int
+        let expectedLeftRightBalanceValue: Int
+        let expectedSideValue: Int
+        let expectedMaskValue: Int
+    }
+    @Test("Get field of type rightLeftBalance bit mask", arguments: [
+        .init(title: "leftRightBalance value is 126", mesgIndex: 0, expectedLeftRightBalanceValue: 126, expectedSideValue: 0, expectedMaskValue: 126),
+        .init(title: "leftRightBalance value is 127", mesgIndex: 1, expectedLeftRightBalanceValue: 127, expectedSideValue: 0, expectedMaskValue: 127),
+        .init(title: "leftRightBalance value is 128", mesgIndex: 2, expectedLeftRightBalanceValue: 128, expectedSideValue: Int(LeftRightBalanceValues.right), expectedMaskValue: 0),
+        .init(title: "leftRightBalance value is 129", mesgIndex: 3, expectedLeftRightBalanceValue: 129, expectedSideValue: Int(LeftRightBalanceValues.right), expectedMaskValue: 1),
+        
+        
+    ] as [leftRightBalanceTestData])
+    func test_rightLeftBalanceBitMask_getFieldReturnsValue(test: leftRightBalanceTestData) throws {
+        let stream = FITSwiftSDK.InputStream(data: fitFileLeftRightBalanceLeftRightBalance100)
+        let decoder = Decoder(stream: stream)
+        
+        let mesgListener = FitListener()
+        decoder.addMesgListener(mesgListener)
+        
+        try decoder.read();
+        
+        let message = mesgListener.fitMessages.recordMesgs[test.mesgIndex]
+        #expect(message.getLeftRightBalance()! == test.expectedLeftRightBalanceValue )
+        #expect((message.getLeftRightBalance()! & LeftRightBalanceValues.right) == test.expectedSideValue )
+        #expect((message.getLeftRightBalance()! & LeftRightBalanceValues.mask) ==  test.expectedMaskValue)
+    }
+    
+    struct leftRightBalance100TestData: Sendable {
+        let title: String
+        let mesgIndex: Int
+        let expectedLeftRightBalanceValue: Int
+        let expectedSideValue: Int
+        let expectedMaskValue: Int
+    }
+    @Test("Get field of type rightLeftBalance100 bit mask", arguments: [
+        .init(title: "leftRightBalance value is 16382", mesgIndex: 0, expectedLeftRightBalanceValue: 16382, expectedSideValue: 0, expectedMaskValue: 16382),
+        .init(title: "leftRightBalance value is 16383", mesgIndex: 1, expectedLeftRightBalanceValue: 16383, expectedSideValue: 0, expectedMaskValue: 16383),
+        .init(title: "leftRightBalance value is 16384", mesgIndex: 2, expectedLeftRightBalanceValue: 16384, expectedSideValue: 0, expectedMaskValue: 0),
+        .init(title: "leftRightBalance value is 32767", mesgIndex: 3, expectedLeftRightBalanceValue: 32767, expectedSideValue: 0, expectedMaskValue: 16383),
+        .init(title: "leftRightBalance value is 32768", mesgIndex: 4, expectedLeftRightBalanceValue: 32768, expectedSideValue: Int(LeftRightBalance100Values.right), expectedMaskValue: 0),
+        .init(title: "leftRightBalance value is 32769", mesgIndex: 5, expectedLeftRightBalanceValue: 32769, expectedSideValue: Int(LeftRightBalance100Values.right), expectedMaskValue: 1),
+    ] as [leftRightBalance100TestData])
+    func test_rightLeftBalance100BitMask_getFieldReturnsValue(test: leftRightBalance100TestData) throws {
+        let stream = FITSwiftSDK.InputStream(data: fitFileLeftRightBalanceLeftRightBalance100)
+        let decoder = Decoder(stream: stream)
+        
+        let mesgListener = FitListener()
+        decoder.addMesgListener(mesgListener)
+        
+        try decoder.read();
+        
+        let message = mesgListener.fitMessages.sessionMesgs[test.mesgIndex]
+        #expect(message.getLeftRightBalance()! == test.expectedLeftRightBalanceValue )
+        #expect((message.getLeftRightBalance()! & LeftRightBalance100Values.right) == test.expectedSideValue )
+        #expect((message.getLeftRightBalance()! & LeftRightBalance100Values.mask) ==  test.expectedMaskValue)
     }
 }
