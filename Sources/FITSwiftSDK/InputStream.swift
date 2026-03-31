@@ -14,26 +14,28 @@ import Foundation
 
 public class InputStream {
     private let data: Data
+    private let bytes: ContiguousArray<UInt8>
     public private(set) var position: Int = 0
-    
+
     enum InputStreamError: Error {
         case positionIndexOutOfRange
         case numberOfBytesProvidedIsLongerThanNumberOfBytesRemaining
     }
-    
+
     public init(data: Data) {
         self.data = data
+        self.bytes = ContiguousArray(data)
         self.position = 0;
     }
-    
+
     public func readNumeric<T>(endianness: Endianness = Endianness.little) throws -> T {
         let size = MemoryLayout<T>.size
 
-        if (size > data.count - position) {
+        if (size > bytes.count - position) {
             throw InputStreamError.numberOfBytesProvidedIsLongerThanNumberOfBytesRemaining
         }
 
-        var value: T = data.withUnsafeBytes { buffer in
+        var value: T = bytes.withUnsafeBytes { buffer in
             buffer.loadUnaligned(fromByteOffset: position, as: T.self)
         }
 
@@ -51,44 +53,46 @@ public class InputStream {
 
         return value
     }
-    
+
     public func readString(size:UInt8) throws -> String {
-        if (size > data.count - position) {
+        if (size > bytes.count - position) {
             throw InputStreamError.numberOfBytesProvidedIsLongerThanNumberOfBytesRemaining
         }
-        
-        let stringData = data.subdata(in: position..<position+Int(size))
-        let string = String(decoding: stringData, as: UTF8.self)
-        
+
+        let string = bytes.withUnsafeBytes { buffer in
+            let slice = UnsafeRawBufferPointer(rebasing: buffer[position..<position+Int(size)])
+            return String(decoding: slice, as: UTF8.self)
+        }
+
         position += Int(size)
-        
+
         return string
     }
-    
+
     public func reset() throws -> Void {
         try seek(position: 0);
     }
-    
+
     public func seek(position: Int) throws -> Void {
-        if (position > data.count - 1) {
+        if (position > bytes.count - 1) {
             throw InputStreamError.positionIndexOutOfRange
         }
         self.position = position;
     }
-    
+
     public func peekByte() -> UInt8 {
-        return data[position]
+        return bytes[position]
     }
-        
+
     var hasBytesAvailable: Bool {
-        return position < data.count
+        return position < bytes.count
     }
-    
+
     // MARK: Array Like Methods
     public var count: Int {
-        return data.count
+        return bytes.count
     }
-    
+
     public subscript(bounds: Range<Data.Index>) -> Data {
         return self.data[bounds]
     }
@@ -96,8 +100,8 @@ public class InputStream {
     public subscript(bounds: ClosedRange<Data.Index>) -> Data {
         return self.data[bounds]
     }
-    
+
     public subscript(index: Int) -> UInt8 {
-        return self.data[index]
+        return self.bytes[index]
     }
 }
