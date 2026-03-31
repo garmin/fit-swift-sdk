@@ -28,23 +28,27 @@ public class InputStream {
     
     public func readNumeric<T>(endianness: Endianness = Endianness.little) throws -> T {
         let size = MemoryLayout<T>.size
-        
+
         if (size > data.count - position) {
             throw InputStreamError.numberOfBytesProvidedIsLongerThanNumberOfBytesRemaining
         }
-        
-        var subdata = data.subdata(in: position..<position+size)
-        
-        if (endianness == Endianness.big) {
-            subdata.reverse()
+
+        var value: T = data.withUnsafeBytes { buffer in
+            buffer.loadUnaligned(fromByteOffset: position, as: T.self)
         }
-        
-        let value:T =  subdata.withUnsafeBytes({
-            $0.load(as: T.self)
-        })
-        
+
+        if (endianness == Endianness.big && size > 1) {
+            withUnsafeMutableBytes(of: &value) { ptr in
+                for i in 0..<(size / 2) {
+                    let tmp = ptr[i]
+                    ptr[i] = ptr[size - 1 - i]
+                    ptr[size - 1 - i] = tmp
+                }
+            }
+        }
+
         position += size
-        
+
         return value
     }
     
@@ -73,8 +77,7 @@ public class InputStream {
     }
     
     public func peekByte() -> UInt8 {
-        let value: UInt8 =  data.subdata(in: position..<position+1).withUnsafeBytes({ $0.load(as: UInt8.self) })
-        return value;
+        return data[position]
     }
         
     var hasBytesAvailable: Bool {
