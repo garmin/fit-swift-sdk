@@ -212,7 +212,9 @@ open class FieldBase: Equatable {
     
     // MARK: Read InputStream
     func read(stream: InputStream, size: UInt8, endianness: Endianness = Endianness.little) throws -> Void {
-        if (getBaseType() == .STRING) {
+        let baseType = getBaseType()
+
+        if (baseType == .STRING) {
             let value = try stream.readString(size: size )
 
             for split in value
@@ -226,17 +228,17 @@ open class FieldBase: Equatable {
 
         var hasValidValues = false;
 
-        if (size % getBaseType().size != 0) {
+        if (size % baseType.size != 0) {
             try stream.seek(position: (stream.position + Int(size)))
 
             return
         }
 
-        let count = size / getBaseType().size
+        let count = size / baseType.size
         for _ in 0..<count {
             var value: Any? = nil
-            
-            switch getBaseType() {
+
+            switch baseType {
             case .ENUM:
                 value = try stream.readNumeric(endianness: endianness) as UInt8
             case .SINT8:
@@ -253,12 +255,12 @@ open class FieldBase: Equatable {
                 value = try stream.readNumeric(endianness: endianness) as UInt32
             case .FLOAT32:
                 value = try stream.readNumeric(endianness: endianness) as Float32
-                if(getBaseType().isInvalid(value)) {
+                if(baseType.isInvalid(value)) {
                     value = nil
                 }
             case .FLOAT64:
                 value = try stream.readNumeric(endianness: endianness) as Float64
-                if(getBaseType().isInvalid(value)) {
+                if(baseType.isInvalid(value)) {
                     value = nil
                 }
             case .UINT8Z:
@@ -278,11 +280,11 @@ open class FieldBase: Equatable {
             case .STRING:
                 break
             }
-            
-            hasValidValues = getBaseType().isValid(value) || hasValidValues
+
+            hasValidValues = baseType.isValid(value) || hasValidValues
             values.append(value)
         }
-        
+
         if(!hasValidValues) {
             values.removeAll();
         }
