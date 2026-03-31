@@ -13,34 +13,44 @@
 import Foundation
 
 public class CrcCalculator {
-    private let crcTable: [UInt16] = [
+    private static let crcTable: [UInt16] = [
         0x0000, 0xCC01, 0xD801, 0x1400, 0xF001, 0x3C00, 0x2800, 0xE401,
         0xA001, 0x6C00, 0x7800, 0xB401, 0x5000, 0x9C01, 0x8801, 0x4400
     ]
-    
+
     public private(set) var crc: UInt16 = 0;
-    
+
     public func updateCRC(_ value: UInt8) -> UInt16 {
+        let table = CrcCalculator.crcTable
         // Compute checksum of lower four bits of byte
-        var tmp = crcTable[Int(self.crc) & 0xF];
+        var tmp = table[Int(self.crc) & 0xF];
         self.crc = (self.crc >> 4) & 0x0FFF;
-        self.crc = self.crc ^ tmp ^ crcTable[Int(value) & 0xF];
+        self.crc = self.crc ^ tmp ^ table[Int(value) & 0xF];
 
         // Compute checksum of upper four bits of byte
-        tmp = crcTable[Int(self.crc) & 0xF];
+        tmp = table[Int(self.crc) & 0xF];
         self.crc = (self.crc >> 4) & 0x0FFF;
-        self.crc = self.crc ^ tmp ^ crcTable[(Int(value) >> 4) & 0xF];
+        self.crc = self.crc ^ tmp ^ table[(Int(value) >> 4) & 0xF];
 
         return self.crc;
     }
-    
+
     static func calculateCRC(data: Data) -> UInt16 {
-        let crcCalculator = CrcCalculator();
-        
-        for byte in data {
-            let _ = crcCalculator.updateCRC(byte)
+        let table = crcTable
+        var crc: UInt16 = 0
+
+        data.withUnsafeBytes { buffer in
+            for byte in buffer {
+                var tmp = table[Int(crc) & 0xF]
+                crc = (crc >> 4) & 0x0FFF
+                crc = crc ^ tmp ^ table[Int(byte) & 0xF]
+
+                tmp = table[Int(crc) & 0xF]
+                crc = (crc >> 4) & 0x0FFF
+                crc = crc ^ tmp ^ table[(Int(byte) >> 4) & 0xF]
+            }
         }
-        
-        return crcCalculator.crc
+
+        return crc
     }
 }
