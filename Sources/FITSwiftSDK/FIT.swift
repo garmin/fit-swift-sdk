@@ -33,6 +33,10 @@ public struct FIT: Sendable {
     internal static let STRING_MAX_BYTE_COUNT = MAX_FIELD_SIZE - 1 // Reserve 1 byte for the null terminator that is appended to all strings during encoding
 
     internal static let COMPRESSED_HEADER_MASK: UInt8 = 0x80
+    internal static let COMPRESSED_TIMESTAMP_LOCAL_MESG_NUM_MASK: UInt8 = 0x60
+    internal static let COMPRESSED_TIMESTAMP_LOCAL_MESG_NUM_SHIFT: UInt8 = 5
+    internal static let COMPRESSED_TIMESTAMP_OFFSET_MASK: UInt8 = 0x1F
+    internal static let TIMESTAMP_FIELD_NUM: UInt8 = 253
     internal static let MESG_DEFINITION_MASK: UInt8 = 0x40
     internal static let MESG_HEADER_MASK: UInt8 = 0x00
     internal static let CRC_SIZE: UInt8 = 2

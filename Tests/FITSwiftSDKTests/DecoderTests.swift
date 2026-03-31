@@ -325,4 +325,147 @@ final class DecoderTests: XCTestCase {
 
         XCTAssertThrowsError(try decoder.broadcastMesg(fileIdMesg))
     }
+
+    // MARK: Compressed Timestamp Tests
+
+    func test_compressedTimestamp_basicOffset() throws {
+        // Definition: local mesg 0, record (global 20), fields: timestamp (253, uint32) + field 0 (enum)
+        // Normal message: timestamp = 1000000000 (0x3B9ACA00), field 0 = 1
+        // Compressed timestamp: local 0, offset 5 → expected timestamp = 1000000005
+        let data = Data([
+            // Definition (local mesg 0)
+            0x40, 0x00, 0x00, 0x14, 0x00, 0x02,
+            0xFD, 0x04, 0x86,  // field 253, 4 bytes, uint32
+            0x00, 0x01, 0x00,  // field 0, 1 byte, enum
+            // Normal data message (local mesg 0)
+            0x00,
+            0x00, 0xCA, 0x9A, 0x3B,  // timestamp = 1000000000 LE
+            0x01,                     // field 0 = 1
+            // Compressed timestamp: 1_00_00101 = 0x85, local 0, offset 5
+            0x85,
+            0xFF, 0xFF, 0xFF, 0xFF,  // dummy timestamp (overwritten)
+            0x02,                     // field 0 = 2
+            // CRC (not validated in dataOnly mode)
+            0x00, 0x00,
+        ])
+
+        let stream = FITSwiftSDK.InputStream(data: data)
+        let decoder = Decoder(stream: stream)
+        let listener = TestMesgListener()
+        decoder.addMesgListener(listener)
+
+        try decoder.read(decodeMode: .dataOnly)
+
+        XCTAssertEqual(listener.mesgs.count, 2)
+        let compressedMesg = listener.mesgs[1]
+        let timestamp = compressedMesg.getFieldValue(fieldNum: 253) as? UInt32
+        XCTAssertEqual(timestamp, 1000000005)
+    }
+
+    func test_compressedTimestamp_rollover() throws {
+        // Normal message: timestamp = 1000000030 (lower 5 bits = 30)
+        // Compressed: offset = 2, since 2 < 30 → rollover → timestamp = 1000000034
+        let data = Data([
+            // Definition (local mesg 0)
+            0x40, 0x00, 0x00, 0x14, 0x00, 0x02,
+            0xFD, 0x04, 0x86,
+            0x00, 0x01, 0x00,
+            // Normal data message: timestamp = 1000000030 = 0x3B9ACA1E
+            0x00,
+            0x1E, 0xCA, 0x9A, 0x3B,
+            0x01,
+            // Compressed: 1_00_00010 = 0x82, offset 2
+            0x82,
+            0xFF, 0xFF, 0xFF, 0xFF,
+            0x02,
+            // CRC
+            0x00, 0x00,
+        ])
+
+        let stream = FITSwiftSDK.InputStream(data: data)
+        let decoder = Decoder(stream: stream)
+        let listener = TestMesgListener()
+        decoder.addMesgListener(listener)
+
+        try decoder.read(decodeMode: .dataOnly)
+
+        XCTAssertEqual(listener.mesgs.count, 2)
+        let timestamp = listener.mesgs[1].getFieldValue(fieldNum: 253) as? UInt32
+        XCTAssertEqual(timestamp, 1000000034)
+    }
+
+    func test_compressedTimestamp_localMesgNum1() throws {
+        // Definition 0 has timestamp, definition 1 does not
+        // Normal message on mesg 0 sets timestamp, compressed message uses mesg 1
+        let data = Data([
+            // Definition local mesg 0: timestamp + field 0
+            0x40, 0x00, 0x00, 0x14, 0x00, 0x02,
+            0xFD, 0x04, 0x86,
+            0x00, 0x01, 0x00,
+            // Definition local mesg 1: only field 0
+            0x41, 0x00, 0x00, 0x14, 0x00, 0x01,
+            0x00, 0x01, 0x00,
+            // Normal data message (local mesg 0): timestamp = 1000000000
+            0x00,
+            0x00, 0xCA, 0x9A, 0x3B,
+            0x01,
+            // Compressed: 1_01_00101 = 0xA5, local mesg 1, offset 5
+            0xA5,
+            0x03,  // field 0 = 3 (no timestamp in definition 1)
+            // CRC
+            0x00, 0x00,
+        ])
+
+        let stream = FITSwiftSDK.InputStream(data: data)
+        let decoder = Decoder(stream: stream)
+        let listener = TestMesgListener()
+        decoder.addMesgListener(listener)
+
+        try decoder.read(decodeMode: .dataOnly)
+
+        XCTAssertEqual(listener.mesgs.count, 2)
+        let compressedMesg = listener.mesgs[1]
+        let timestamp = compressedMesg.getFieldValue(fieldNum: 253) as? UInt32
+        XCTAssertEqual(timestamp, 1000000005)
+    }
+
+    func test_compressedTimestamp_sequentialMessages() throws {
+        // Three compressed messages in sequence to verify chaining
+        let data = Data([
+            // Definition (local mesg 0)
+            0x40, 0x00, 0x00, 0x14, 0x00, 0x02,
+            0xFD, 0x04, 0x86,
+            0x00, 0x01, 0x00,
+            // Normal: timestamp = 1000000000
+            0x00,
+            0x00, 0xCA, 0x9A, 0x3B,
+            0x01,
+            // Compressed 1: offset 5 → 1000000005
+            0x85,
+            0xFF, 0xFF, 0xFF, 0xFF,
+            0x02,
+            // Compressed 2: offset 10 → 1000000010
+            0x8A,
+            0xFF, 0xFF, 0xFF, 0xFF,
+            0x03,
+            // Compressed 3: offset 3, rollover (3 < 10) → 1000000035
+            0x83,
+            0xFF, 0xFF, 0xFF, 0xFF,
+            0x04,
+            // CRC
+            0x00, 0x00,
+        ])
+
+        let stream = FITSwiftSDK.InputStream(data: data)
+        let decoder = Decoder(stream: stream)
+        let listener = TestMesgListener()
+        decoder.addMesgListener(listener)
+
+        try decoder.read(decodeMode: .dataOnly)
+
+        XCTAssertEqual(listener.mesgs.count, 4)
+        XCTAssertEqual(listener.mesgs[1].getFieldValue(fieldNum: 253) as? UInt32, 1000000005)
+        XCTAssertEqual(listener.mesgs[2].getFieldValue(fieldNum: 253) as? UInt32, 1000000010)
+        XCTAssertEqual(listener.mesgs[3].getFieldValue(fieldNum: 253) as? UInt32, 1000000035)
+    }
 }

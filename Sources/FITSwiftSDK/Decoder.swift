@@ -16,11 +16,11 @@ public class Decoder: MesgSource, MesgDefinitionSource {
     private var localMesgDefinitions: [LocalMesgNum: MesgDefinition] = [:]
     private let accumulator = Accumulator()
     private let developerDataLookup = DeveloperDataLookup()
+    private var lastTimestamp: UInt32 = 0
     
     public enum DecoderError: Error {
         case isNotFitFile
         case crcFailed
-        case compressedTimestampDataMessageNotSupported
         case messageDefinitionNotFound(localMesgNum: LocalMesgNum)
     }
     
@@ -192,7 +192,11 @@ public class Decoder: MesgSource, MesgDefinitionSource {
         self.decoderMesgIndex = self.decoderMesgIndex + 1
         
         try mesg.read(stream: stream, mesgDefinition: mesgDefinition!, accumulator: accumulator)
-        
+
+        if let timestampValue = mesg.getFieldValue(fieldNum: FIT.TIMESTAMP_FIELD_NUM) as? UInt32 {
+            lastTimestamp = timestampValue
+        }
+
         // Add Developer Field Mesgs to Lookup
         switch mesg.mesgNum {
             case MesgNum.developerDataId.rawValue:
@@ -210,7 +214,47 @@ public class Decoder: MesgSource, MesgDefinitionSource {
     }
     
     private func decodeCompressedTimestampDataMessage() throws -> Void {
-        throw DecoderError.compressedTimestampDataMessageNotSupported
+        let recordHeader: UInt8 = try stream.readNumeric()
+
+        let localMesgNumRaw = (recordHeader & FIT.COMPRESSED_TIMESTAMP_LOCAL_MESG_NUM_MASK) >> FIT.COMPRESSED_TIMESTAMP_LOCAL_MESG_NUM_SHIFT
+        let localMesgNum = LocalMesgNum(rawValue: localMesgNumRaw)!
+
+        let timestampOffset = UInt32(recordHeader & FIT.COMPRESSED_TIMESTAMP_OFFSET_MASK)
+        var timestamp = (lastTimestamp & 0xFFFFFFE0) | timestampOffset
+        if timestampOffset < (lastTimestamp & 0x1F) {
+            timestamp = timestamp &+ 32
+        }
+        lastTimestamp = timestamp
+
+        let mesgDefinition = localMesgDefinitions[localMesgNum]
+
+        if (mesgDefinition == nil) {
+            throw DecoderError.messageDefinitionNotFound(localMesgNum: localMesgNum)
+        }
+
+        let mesg = Factory.createMesg(mesgNum: mesgDefinition!.globalMessageNumber)
+
+        mesg.decoderMesgIndex = self.decoderMesgIndex
+        self.decoderMesgIndex = self.decoderMesgIndex + 1
+
+        try mesg.read(stream: stream, mesgDefinition: mesgDefinition!, accumulator: accumulator)
+
+        try mesg.setFieldValue(fieldNum: FIT.TIMESTAMP_FIELD_NUM, value: timestamp)
+
+        // Add Developer Field Mesgs to Lookup
+        switch mesg.mesgNum {
+            case MesgNum.developerDataId.rawValue:
+                developerDataLookup.addDeveloperDataIdMesg(mesg: mesg as! DeveloperDataIdMesg)
+            case MesgNum.fieldDescription.rawValue:
+                guard let description = developerDataLookup.addFieldDescriptionMesg(mesg: mesg as! FieldDescriptionMesg) else {
+                    break
+                }
+                broadcastDeveloperFieldDescription(description)
+            default:
+                break
+            }
+
+        try broadcastMesg(mesg)
     }
     
     // MARK: MesgSource
