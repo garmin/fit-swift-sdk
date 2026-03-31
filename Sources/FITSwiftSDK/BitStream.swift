@@ -61,13 +61,32 @@ public class BitStream {
         if (nBitsToRead > 64) {
             throw BitStreamError.tooManyBitsRequested
         }
-        
-        var value: Int64 = 0
-        
-        for i in 0..<nBitsToRead {
-            value |= Int64(try readBit()) << i
+
+        if (nBitsToRead > bitsAvailable) {
+            throw BitStreamError.noBitsAvailable
         }
-        
+
+        var value: Int64 = 0
+        var bitsRead = 0
+        var remaining = nBitsToRead
+
+        while remaining > 0 {
+            if (currentBit >= BitStream.BITS_PER_POSITION) {
+                try nextByte()
+            }
+
+            let bitsInByte = BitStream.BITS_PER_POSITION - currentBit
+            let take = min(remaining, bitsInByte)
+            let mask = UInt8((1 << take) &- 1)
+            value |= Int64(currentByte & mask) << bitsRead
+
+            currentByte >>= take
+            currentBit += take
+            bitsAvailable -= take
+            bitsRead += take
+            remaining -= take
+        }
+
         return value
     }
     
