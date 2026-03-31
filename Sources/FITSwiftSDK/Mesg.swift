@@ -36,7 +36,7 @@ open class Mesg: Equatable {
         
         for (num, field) in mesg.fields {
             if(field.hasValues) {
-                fields[num] = Field(field: field)
+                fields[num] = field
             }
         }
         
