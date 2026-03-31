@@ -24,7 +24,7 @@ open class FieldBase: Equatable {
     
     // MARK: Initializers
     public init(fieldBase: FieldBase) {
-        self.values += fieldBase.values
+        self.values = fieldBase.values
     }
     
     init() {
