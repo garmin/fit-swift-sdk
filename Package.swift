@@ -23,7 +23,7 @@ let package = Package(
         .target(
             name: "FITSwiftSDK",
             dependencies: [
-                .product(name: "Collections", package: "swift-collections")
+                .product(name: "OrderedCollections", package: "swift-collections")
             ]
         ),
         .testTarget(
