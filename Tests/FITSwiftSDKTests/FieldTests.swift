@@ -40,7 +40,7 @@ func createTestFieldWithValue(type: BaseType, value: Any?) throws -> Field {
     struct SignedValuesTestData: Sendable {
         let title: String
         let baseType: BaseType
-        let swiftType: any Equatable.Type
+        let swiftType: any (Equatable & Sendable).Type
         let value: any Sendable
         let expected: any Numeric & Sendable
     }
@@ -65,27 +65,33 @@ func createTestFieldWithValue(type: BaseType, value: Any?) throws -> Field {
         try assertValueAndExpectedValueEqual(swiftType: test.swiftType, value: field.getValue()!, expected: test.expected)
     }
 
-    static let invalidValueTestData: [(String, BaseType, Data, any Equatable.Type)] = [
-        ("Enum", .ENUM, Data([0xFF]), UInt8.self),
-        ("Byte", .BYTE, Data([0xFF]), UInt8.self),
-        ("UInt8", .UINT8, Data([0xFF]), UInt8.self),
-        ("UInt8Z", .UINT8Z, Data([0x00]), UInt8.self),
-        ("SInt8", .SINT8, Data([0x7F]), Int8.self),
-        ("UInt16", .UINT16, Data([0xFF, 0xFF]), UInt16.self),
-        ("UInt16Z", .UINT16Z, Data([0x00, 0x00]), UInt16.self),
-        ("SInt16", .SINT16, Data([0xFF, 0x7F]), Int16.self),
-        ("UInt32", .UINT32, Data([0xFF, 0xFF, 0xFF, 0xFF]), UInt32.self),
-        ("UInt32Z", .UINT32Z, Data([0x00, 0x00, 0x00, 0x00]), UInt32.self),
-        ("SInt32", .SINT32, Data([0xFF, 0xFF, 0xFF, 0x7F]), Int32.self),
-        ("UInt64", .UINT64, Data([0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF]), UInt64.self),
-        ("UInt64Z", .UINT64Z, Data([0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]), UInt64.self),
-        ("SInt64", .SINT64, Data([0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x7F]), Int64.self),
-        ("Float32", .FLOAT32, Data([0xFF, 0xFF, 0xFF, 0xFF]), Float32.self),
-        ("Float64", .FLOAT64, Data([0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF]), Float64.self),
+    struct InvalidValueTestData: Sendable {
+        let title: String
+        let baseType: BaseType
+        let swiftType: any (Equatable & Sendable).Type
+        let value: Data
+    }
+    static let invalidValueTestData: [InvalidValueTestData] = [
+        .init(title: "Enum", baseType: .ENUM, swiftType: UInt8.self, value: Data([0xFF])),
+        .init(title: "Byte", baseType: .BYTE, swiftType: UInt8.self, value: Data([0xFF])),
+        .init(title: "UInt8", baseType: .UINT8, swiftType: UInt8.self, value: Data([0xFF])),
+        .init(title: "UInt8Z", baseType: .UINT8Z, swiftType: UInt8.self, value: Data([0x00])),
+        .init(title: "SInt8", baseType: .SINT8, swiftType: Int8.self, value: Data([0x7F])),
+        .init(title: "UInt16", baseType: .UINT16, swiftType: UInt16.self, value: Data([0xFF, 0xFF])),
+        .init(title: "UInt16Z", baseType: .UINT16Z, swiftType: UInt16.self, value: Data([0x00, 0x00])),
+        .init(title: "SInt16", baseType: .SINT16, swiftType: Int16.self, value: Data([0xFF, 0x7F])),
+        .init(title: "UInt32", baseType: .UINT32, swiftType: UInt32.self, value: Data([0xFF, 0xFF, 0xFF, 0xFF])),
+        .init(title: "UInt32Z", baseType: .UINT32Z, swiftType: UInt32.self, value: Data([0x00, 0x00, 0x00, 0x00])),
+        .init(title: "SInt32", baseType: .SINT32, swiftType: Int32.self, value: Data([0xFF, 0xFF, 0xFF, 0x7F])),
+        .init(title: "UInt64", baseType: .UINT64, swiftType: UInt64.self, value: Data([0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF])),
+        .init(title: "UInt64Z", baseType: .UINT64Z, swiftType: UInt64.self, value: Data([0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])),
+        .init(title: "SInt64", baseType: .SINT64, swiftType: Int64.self, value: Data([0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x7F])),
+        .init(title: "Float32", baseType: .FLOAT32, swiftType: Float32.self, value: Data([0xFF, 0xFF, 0xFF, 0xFF])),
+        .init(title: "Float64", baseType: .FLOAT64, swiftType: Float64.self, value: Data([0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF])),
     ]
     @Test("Get and set value when value is invalid value returns nil", arguments: invalidValueTestData)
-    func test_getAndSetValue_whenValueIsInvalidValue_returnsNil(title: String, baseType: BaseType, value: Data, swiftType: any Equatable.Type) throws {
-        try assertFieldSetToInvalidValueAndType(swiftType: swiftType.self, value: value, baseType: baseType)
+    func test_getAndSetValue_whenValueIsInvalidValue_returnsNil(test: InvalidValueTestData) throws {
+        try assertFieldSetToInvalidValueAndType(swiftType: test.swiftType, value: test.value, baseType: test.baseType)
     }
 
     // MARK: addRawValue Tests
@@ -756,17 +762,17 @@ func createTestFieldWithValue(type: BaseType, value: Any?) throws -> Field {
         let stream = FITSwiftSDK.InputStream(data: Data([0x0, 0x0, 0x0, 0x0, 0x0, 0x80, 0x71, 0x40]))
 
         try float64Field.read(stream: stream, size: 8)
-        
+
         #expect(float64Field.getValue(index: 0) as! Float64 == 280.0)
     }
-    
+
     @Test func test_whenBaseTypeIsFloat64_bigEndianValueCanBeDecoded() throws {
         let float64Field = Factory.createDefaultField(fieldNum: 0, baseType: BaseType.FLOAT64)
 
         let stream = FITSwiftSDK.InputStream(data: Data([0x40, 0x71, 0x80, 0x0, 0x0, 0x0, 0x0, 0x0]))
 
         try float64Field.read(stream: stream, size: 8, endianness: .big)
-        
+
         #expect(float64Field.getValue(index: 0) as! Float64 == 280.0)
     }
 

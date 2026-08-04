@@ -567,7 +567,7 @@ import Foundation
         #expect(mesg.fieldCount == 4)
         #expect(mesg.getField(fieldNum: invalidFieldDef.num) == nil)
     }
-    
+
     // MARK: Bit Mask Integration Tests
     struct leftRightBalanceTestData: Sendable {
         let title: String
@@ -581,24 +581,24 @@ import Foundation
         .init(title: "leftRightBalance value is 127", mesgIndex: 1, expectedLeftRightBalanceValue: 127, expectedSideValue: 0, expectedMaskValue: 127),
         .init(title: "leftRightBalance value is 128", mesgIndex: 2, expectedLeftRightBalanceValue: 128, expectedSideValue: Int(LeftRightBalanceValues.right), expectedMaskValue: 0),
         .init(title: "leftRightBalance value is 129", mesgIndex: 3, expectedLeftRightBalanceValue: 129, expectedSideValue: Int(LeftRightBalanceValues.right), expectedMaskValue: 1),
-        
-        
+
+
     ] as [leftRightBalanceTestData])
     func test_rightLeftBalanceBitMask_getFieldReturnsValue(test: leftRightBalanceTestData) throws {
         let stream = FITSwiftSDK.InputStream(data: fitFileLeftRightBalanceLeftRightBalance100)
         let decoder = Decoder(stream: stream)
-        
+
         let mesgListener = FitListener()
         decoder.addMesgListener(mesgListener)
-        
+
         try decoder.read();
-        
+
         let message = mesgListener.fitMessages.recordMesgs[test.mesgIndex]
         #expect(message.getLeftRightBalance()! == test.expectedLeftRightBalanceValue )
         #expect((message.getLeftRightBalance()! & LeftRightBalanceValues.right) == test.expectedSideValue )
         #expect((message.getLeftRightBalance()! & LeftRightBalanceValues.mask) ==  test.expectedMaskValue)
     }
-    
+
     struct leftRightBalance100TestData: Sendable {
         let title: String
         let mesgIndex: Int
@@ -617,15 +617,79 @@ import Foundation
     func test_rightLeftBalance100BitMask_getFieldReturnsValue(test: leftRightBalance100TestData) throws {
         let stream = FITSwiftSDK.InputStream(data: fitFileLeftRightBalanceLeftRightBalance100)
         let decoder = Decoder(stream: stream)
-        
+
         let mesgListener = FitListener()
         decoder.addMesgListener(mesgListener)
-        
+
         try decoder.read();
-        
+
         let message = mesgListener.fitMessages.sessionMesgs[test.mesgIndex]
         #expect(message.getLeftRightBalance()! == test.expectedLeftRightBalanceValue )
         #expect((message.getLeftRightBalance()! & LeftRightBalance100Values.right) == test.expectedSideValue )
         #expect((message.getLeftRightBalance()! & LeftRightBalance100Values.mask) ==  test.expectedMaskValue)
+    }
+
+    // MARK: Invalid Value Tests
+
+    struct InvalidFieldTestCase: @unchecked Sendable {
+        let label: String
+        let fieldNum: UInt8
+        let setInvalidField: (RecordMesg) throws -> Void
+    }
+
+    @Test("Field with invalid value is dropped", arguments: [
+        InvalidFieldTestCase(label: "Enum (activity_type)",  fieldNum: RecordMesg.activityTypeFieldNum)  { try $0.setActivityType(.invalid) },
+        InvalidFieldTestCase(label: "SInt8 (left_pco)",      fieldNum: RecordMesg.leftPcoFieldNum)       { try $0.setLeftPco(Int8.max) },
+        InvalidFieldTestCase(label: "UInt8 (cadence)",       fieldNum: RecordMesg.cadenceFieldNum)       { try $0.setCadence(UInt8.max) },
+        InvalidFieldTestCase(label: "SInt16 (grade)",        fieldNum: RecordMesg.gradeFieldNum)         { try $0.setGrade(Float64(Int16.max) / 100.0) },
+        InvalidFieldTestCase(label: "UInt16 (power)",        fieldNum: RecordMesg.powerFieldNum)         { try $0.setPower(UInt16.max) },
+        InvalidFieldTestCase(label: "SInt32 (position_lat)", fieldNum: RecordMesg.positionLatFieldNum)   { try $0.setPositionLat(Int32.max) },
+        InvalidFieldTestCase(label: "UInt32 (timestamp)",    fieldNum: RecordMesg.timestampFieldNum)     { try $0.setTimestamp(DateTime(timestamp: UInt32.max)) },
+    ])
+    func test_fieldWithInvalidValue_areDroppedFromMesg(testCase: InvalidFieldTestCase) throws {
+        let recordMesg = RecordMesg()
+        try testCase.setInvalidField(recordMesg)
+        try recordMesg.setHeartRate(50)
+        let fitMessages = try encodeDecode(mesgs: [recordMesg])
+
+        #expect(fitMessages.recordMesgs.count > 0, "Message should not be dropped")
+
+        #expect(fitMessages.recordMesgs[0].getField(fieldNum: testCase.fieldNum) == nil,
+                "\(testCase.label) field with invalid value should be dropped")
+
+        #expect(fitMessages.recordMesgs[0].getHeartRate() == 50,
+                "heart_rate anchor field should still be present")
+    }
+
+    @Test func test_FieldWithInvalidValueAndComponents_areDroppedFromMesg() throws {
+        let recordMesg = RecordMesg()
+        try recordMesg.setSpeed(65.535)
+        try recordMesg.setHeartRate(60)
+
+        let fitMessages = try encodeDecode(mesgs: [recordMesg])
+
+        #expect(fitMessages.recordMesgs.count > 0, "Message should not be dropped")
+
+        #expect(fitMessages.recordMesgs[0].getSpeed() == nil,
+                "speed field with invalid value should be dropped")
+
+        #expect(fitMessages.recordMesgs[0].getEnhancedSpeed() == nil,
+                "enhanced_speed should be absent when its parent speed was dropped")
+    }
+
+    // MARK: Utils
+
+    /// Encodes a list of `Mesg`s and immediately decodes them back.
+    /// Returns the decoded `FitMessages`.
+    func encodeDecode(mesgs: [Mesg]) throws -> FitMessages {
+        let encoder = Encoder()
+        encoder.write(mesgs: mesgs)
+        let data = encoder.close()
+        let stream = FITSwiftSDK.InputStream(data: data)
+        let decoder = Decoder(stream: stream)
+        let listener = FitListener()
+        decoder.addMesgListener(listener)
+        try decoder.read()
+        return listener.fitMessages
     }
 }
