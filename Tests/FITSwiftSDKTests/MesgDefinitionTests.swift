@@ -11,6 +11,18 @@ import XCTest
 
 final class MesgDefinitionTests: XCTestCase {
     // MARK: Constructor Tests
+    func test_constructor_withInvalidArchitecture_throwsError() {
+        let stream = FITSwiftSDK.InputStream(data: Data([
+            0x40, // Definition header
+            0x00, // Reserved
+            0xFF  // Invalid architecture
+        ]))
+
+        XCTAssertThrowsError(try MesgDefinition(stream: stream, developerDataLookup: DeveloperDataLookup())) { error in
+            XCTAssertEqual(error as? MesgDefinition.MesgDefinitionError, .invalidArchitecture(architecture: 0xFF))
+        }
+    }
+
     func test_constructor_fromMesg_sortsFieldDefsByOrderOfInsertion() throws {
         let mesg = RecordMesg()
         try mesg.setHeartRate(50)
