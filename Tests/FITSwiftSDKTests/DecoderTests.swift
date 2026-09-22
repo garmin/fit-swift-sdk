@@ -122,6 +122,13 @@ final class DecoderTests: XCTestCase {
         
         XCTAssertEqual(try decoder.checkIntegrity(), true)
     }
+
+    func test_checkIntegrity_whenFileIsEmpty_returnsFalse() throws {
+        let stream = FITSwiftSDK.InputStream(data: Data([]))
+        let decoder = Decoder(stream: stream)
+
+        XCTAssertFalse(try decoder.checkIntegrity())
+    }
     
     func test_checkIntegrity_whenIsFitReturnsFalse_returnsFalse() throws {
         class DecoderMock: Decoder {
