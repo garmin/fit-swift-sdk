@@ -83,8 +83,7 @@ import Foundation
     }
 
     @Test func test_reset_whenPositionNot0_resetsStreamPosition() throws {
-        let testStringData = Data(fitFileShort)
-        let stream = FITSwiftSDK.InputStream(data: testStringData)
+        let stream = FITSwiftSDK.InputStream(data: fitFileShort)
 
         #expect(try stream.readNumeric() == 0x0E as UInt8)
         #expect(stream.position == 1)
@@ -96,8 +95,7 @@ import Foundation
     }
 
     @Test func test_seek_whenWithinRange_setsStreamToExpectedPosition() throws {
-        let testStringData = Data(fitFileShort)
-        let stream = FITSwiftSDK.InputStream(data: testStringData)
+        let stream = FITSwiftSDK.InputStream(data: fitFileShort)
         try stream.seek(position: 8)
 
         #expect(stream.position == 8)
@@ -105,11 +103,18 @@ import Foundation
     }
 
     @Test func test_seek_whenPositionExceedsStreamSize_throwsError() throws {
-        let testStringData = Data(fitFileShort)
-        let stream = FITSwiftSDK.InputStream(data: testStringData)
+        let stream = FITSwiftSDK.InputStream(data: fitFileShort)
 
         #expect(throws: FITSwiftSDK.InputStream.InputStreamError.positionIndexOutOfRange) {
             try stream.seek(position: 255)
+        }
+    }
+
+    @Test func test_seek_whenPositionIsNegative_throwsError() throws {
+        let stream = FITSwiftSDK.InputStream(data: fitFileShort)
+
+        #expect(throws: FITSwiftSDK.InputStream.InputStreamError.seekDestinationMustBePositive) {
+            try stream.seek(position: -1)
         }
     }
 
