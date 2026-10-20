@@ -407,16 +407,17 @@ import Foundation
         #expect(mesgListener.mesgs[3].devFieldCount == 2)
     }
 
-    @Test func test_whenDeveloperDataReadWithIncorrectIndex_throwError() throws {
+    @Test func test_whenDeveloperDataReadWithIncorrectIndex_readsPastDevData() throws {
         let stream = FITSwiftSDK.InputStream(data: fitFileDevDataIncorrectDeveloperDataIndex)
         let decoder = Decoder(stream: stream)
 
         let mesgListener = TestMesgListener()
         decoder.addMesgListener(mesgListener)
 
-        #expect(throws: (any Error).self) {
-            try decoder.read()
-        }
+        try decoder.read()
+
+        #expect(mesgListener.mesgs.count == 3)
+        #expect(mesgListener.mesgs[2].devFields.count == 0)
     }
 
     @Test func test_whenFileHasDevDataApplicationId_applicationIdIsReadAndValidUuid() throws {

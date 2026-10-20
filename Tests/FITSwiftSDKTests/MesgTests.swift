@@ -7,6 +7,7 @@
 
 
 import XCTest
+import Testing
 @testable import FITSwiftSDK
 
 final class MesgTests: XCTestCase {
@@ -418,5 +419,50 @@ final class MesgTests: XCTestCase {
 
         XCTAssertEqual(originalMesg, copyMesg)
         XCTAssertEqual(originalFields, copyFields)
+    }
+}
+
+@Suite
+struct MesgReadDevFieldTests {
+    // Record definition with a heart rate field and one developer field (number 1, size 5, developer data index 2)
+    private let recordDefinitionBytes: [UInt8] = [
+        FIT.HDR_TYPE_DEF_BIT | FIT.DEV_DATA_MASK, 0x00, Endianness.little.rawValue,
+        UInt8(Profile.MesgNum.record), 0x00,
+        1, RecordMesg.heartRateFieldNum, 1, BaseType.UINT8.rawValue,
+        1, 1, 5, 2
+    ]
+
+    // Record data without its header: heart rate 254, developer string "abcd" with null terminator, then one byte of the next record
+    private let recordDataBytes: [UInt8] = [0xFE, 0x61, 0x62, 0x63, 0x64, 0x00, 0xFF]
+
+    private func createDeveloperDataLookup() throws -> DeveloperDataLookup {
+        let developerDataIdMesg = DeveloperDataIdMesg()
+        try developerDataIdMesg.setDeveloperDataIndex(2)
+
+        let fieldDescriptionMesg = FieldDescriptionMesg()
+        try fieldDescriptionMesg.setDeveloperDataIndex(2)
+        try fieldDescriptionMesg.setFieldDefinitionNumber(1)
+        try fieldDescriptionMesg.setFitBaseTypeId(.string)
+
+        let lookup = DeveloperDataLookup()
+        lookup.addDeveloperDataIdMesg(mesg: developerDataIdMesg)
+        lookup.addFieldDescriptionMesg(mesg: fieldDescriptionMesg)
+
+        return lookup
+    }
+
+    @Test(arguments: [true, false])
+    func test_read_developerFields(hasDevDescription: Bool) throws {
+        let developerDataLookup = try hasDevDescription ? createDeveloperDataLookup() : DeveloperDataLookup()
+        let mesgDefinition = try MesgDefinition(stream: FITSwiftSDK.InputStream(data: Data(recordDefinitionBytes)), developerDataLookup: developerDataLookup)
+        let stream = FITSwiftSDK.InputStream(data: Data(recordDataBytes))
+        let mesg = RecordMesg()
+
+        try mesg.read(stream: stream, mesgDefinition: mesgDefinition, accumulator: Accumulator())
+
+        #expect(mesg.getHeartRate() == 254)
+        #expect(mesg.developerFields.count == (hasDevDescription ? 1 : 0))
+        #expect((mesg.developerFields.first?.getValue() as? String) == (hasDevDescription ? "abcd" : nil))
+        #expect(stream.position == recordDataBytes.count - 1)
     }
 }
