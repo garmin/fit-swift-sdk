@@ -506,24 +506,29 @@ func createTestFieldWithValue(type: BaseType, value: Any?) throws -> Field {
         #expect(byteArrayField.hasValues)
     }
 
-    static let byteArrayTestCases = [
-        (title: "First element is invalid 0111", data: Data([0xFF, 0x02, 0x03, 0x04])),
-        (title: "Second element is invalid 1011", data: Data([0x01, 0xFF, 0x03, 0x04])),
-        (title: "Third element is invalid 1101", data: Data([0x01, 0x02, 0xFF, 0x04])),
-        (title: "Last element is invalid 1110", data: Data([0x01, 0x02, 0x03, 0xFF])),
-        (title: "First and last elements are invalid 0110", data: Data([0xFF, 0x02, 0x03, 0xFF])),
-        (title: "Middle elements are invalid 1001", data: Data([0x01, 0xFF, 0xFF, 0x04])),
-        (title: "Odd indexes are invalid 1010", data: Data([0x01, 0xFF, 0x03, 0xFF])),
-        (title: "Even indexes are invalid 0101", data: Data([0xFF, 0x02, 0xFF, 0x04])),
-        (title: "All but first element are invalid 1000", data: Data([0x01, 0xFF, 0xFF, 0xFF])),
-        (title: "All but second element are invalid 0100", data: Data([0xFF, 0x02, 0xFF, 0xFF])),
-        (title: "All but third element are invalid 0010", data: Data([0xFF, 0xFF, 0x03, 0xFF])),
-        (title: "All but forth element are invalid 0001", data: Data([0xFF, 0xFF, 0xFF, 0x04])),
-        (title: "First two elements are invalid 0011", data: Data([0xFF, 0xFF, 0x03, 0x04])),
-        (title: "Last two elements are invalid 1100", data: Data([0x01, 0x02, 0xFF, 0xFF]))
+    struct ByteArrayTestData: @unchecked Sendable {
+        let title: String
+        let data: Data
+    }
+
+    static let byteArrayTestCases: [ByteArrayTestData] = [
+        .init(title: "First element is invalid 0111", data: Data([0xFF, 0x02, 0x03, 0x04])),
+        .init(title: "Second element is invalid 1011", data: Data([0x01, 0xFF, 0x03, 0x04])),
+        .init(title: "Third element is invalid 1101", data: Data([0x01, 0x02, 0xFF, 0x04])),
+        .init(title: "Last element is invalid 1110", data: Data([0x01, 0x02, 0x03, 0xFF])),
+        .init(title: "First and last elements are invalid 0110", data: Data([0xFF, 0x02, 0x03, 0xFF])),
+        .init(title: "Middle elements are invalid 1001", data: Data([0x01, 0xFF, 0xFF, 0x04])),
+        .init(title: "Odd indexes are invalid 1010", data: Data([0x01, 0xFF, 0x03, 0xFF])),
+        .init(title: "Even indexes are invalid 0101", data: Data([0xFF, 0x02, 0xFF, 0x04])),
+        .init(title: "All but first element are invalid 1000", data: Data([0x01, 0xFF, 0xFF, 0xFF])),
+        .init(title: "All but second element are invalid 0100", data: Data([0xFF, 0x02, 0xFF, 0xFF])),
+        .init(title: "All but third element are invalid 0010", data: Data([0xFF, 0xFF, 0x03, 0xFF])),
+        .init(title: "All but forth element are invalid 0001", data: Data([0xFF, 0xFF, 0xFF, 0x04])),
+        .init(title: "First two elements are invalid 0011", data: Data([0xFF, 0xFF, 0x03, 0x04])),
+        .init(title: "Last two elements are invalid 1100", data: Data([0x01, 0x02, 0xFF, 0xFF]))
     ]
     @Test("Array field with any invalid values is still valid", arguments: byteArrayTestCases)
-    func test_byteArrayFieldRead_whenAnyValuesAreInvalid_byteArrayFieldIsValid(testCase: (title: String, data: Data)) throws {
+    func test_byteArrayFieldRead_whenAnyValuesAreInvalid_byteArrayFieldIsValid(testCase: ByteArrayTestData) throws {
         let byteArrayField = Factory.createDefaultField(fieldNum: 0, baseType: BaseType.BYTE)
         let stream = FITSwiftSDK.InputStream(data: testCase.data)
         try byteArrayField.read(stream: stream, size: 4)
