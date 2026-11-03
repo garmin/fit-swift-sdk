@@ -167,6 +167,17 @@ final class DecoderTests: XCTestCase {
         try decoder.read();
     }
 
+    func test_read_whenFileIsTruncatedBeforeHeaderDataSizeIsReached_throwsError() throws {
+        // Drop the 18 byte message and 2 byte CRC; the header still declares 36 bytes of data
+        let truncatedFile = fitFileShort.subdata(in: 0..<(fitFileShort.count - 20))
+        let stream = FITSwiftSDK.InputStream(data: truncatedFile)
+        let decoder = Decoder(stream: stream)
+
+        XCTAssertThrowsError(try decoder.read()) { error in
+            XCTAssertEqual(error as? FITSwiftSDK.InputStream.InputStreamError, .positionIndexOutOfRange)
+        }
+    }
+
     // MARK: Skip Header Tests
     func test_read_whenDecodeModeNormalAndFileHasInvalidHeader_throwsError() throws {
         let stream = FITSwiftSDK.InputStream(data: fitFileShortInvalidHeader)

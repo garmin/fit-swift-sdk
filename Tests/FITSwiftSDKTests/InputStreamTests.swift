@@ -138,7 +138,7 @@ import Foundation
         try stream.seek(position: 3)
         #expect(stream.hasBytesAvailable)
 
-        let _ = stream.peekByte()
+        let _ = try stream.peekByte()
         #expect(stream.hasBytesAvailable)
 
         let _ = try stream.readNumeric() as UInt8
@@ -146,6 +146,33 @@ import Foundation
 
         try stream.reset()
         #expect(stream.hasBytesAvailable)
+    }
+
+    @Test func test_peekByte_whenStreamIsEmpty_throwsError() throws {
+        let stream = FITSwiftSDK.InputStream(data: Data())
+
+        #expect(throws: FITSwiftSDK.InputStream.InputStreamError.positionIndexOutOfRange) {
+            try stream.peekByte()
+        }
+    }
+
+    @Test func test_peekByte_whenNoBytesRemaining_throwsError() throws {
+        let stream = FITSwiftSDK.InputStream(data: Data([0x00, 0x01]))
+
+        let _ = try stream.readNumeric() as UInt16
+        #expect(!stream.hasBytesAvailable)
+
+        #expect(throws: FITSwiftSDK.InputStream.InputStreamError.positionIndexOutOfRange) {
+            try stream.peekByte()
+        }
+    }
+
+    @Test func test_peekByte_whenBytesRemaining_returnsByteWithoutAdvancingPosition() throws {
+        let stream = FITSwiftSDK.InputStream(data: Data([0x00, 0x01]))
+        try stream.seek(position: 1)
+
+        #expect(try stream.peekByte() == 0x01)
+        #expect(stream.position == 1)
     }
 
     @Test func test_readNumeric_whenValueIsInvalidEnum_baseTypeInvalidEqualsValueAndIsInvalid() throws {
