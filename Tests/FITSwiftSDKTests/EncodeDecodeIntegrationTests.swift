@@ -76,4 +76,49 @@ struct EncodeDecodeIntegrationTests {
         let decodedDeveloperField = recordMesg.getDeveloperField(developerDataIdMesg: decodedDeveloperFieldDefinition.developerDataIdMesg!, fieldDescriptionMesg: decodedDeveloperFieldDefinition.fieldDescriptionMesg!)
         #expect(developerField.getValue() as! UInt8 == decodedDeveloperField?.getValue() as! UInt8 )
     }
+
+    @Test(arguments: [false, true])
+    func test_whenDeveloperFieldCannotBeMapped_doesNotThrowAndSkipsDeveloperFieldBytes(writeFieldDescriptionWithoutIndex: Bool) throws {
+        let developerDataIdMesg = DeveloperDataIdMesg()
+        try developerDataIdMesg.setDeveloperDataIndex(0)
+
+        let fieldDescriptionMesg = FieldDescriptionMesg()
+        try fieldDescriptionMesg.setDeveloperDataIndex(0)
+        try fieldDescriptionMesg.setFieldDefinitionNumber(0)
+        try fieldDescriptionMesg.setFitBaseTypeId(.uint8)
+
+        // Two records, so a misaligned stream after the first developer field would corrupt the second
+        let recordMesgs = try [60, 70].map { heartRate in
+            let recordMesg = RecordMesg()
+            try recordMesg.setHeartRate(UInt8(heartRate))
+            let developerField = DeveloperField(fieldDescription: fieldDescriptionMesg, developerDataIdMesg: developerDataIdMesg)
+            try developerField.setValue(value: 63 as Int)
+            recordMesg.setDeveloperField(developerField)
+            return recordMesg
+        }
+
+        // The field description is either not written at all, or written without a developer data index
+        var mesgs: [Mesg] = [developerDataIdMesg]
+        if writeFieldDescriptionWithoutIndex {
+            let fieldDescriptionMesgWithoutIndex = FieldDescriptionMesg()
+            try fieldDescriptionMesgWithoutIndex.setFieldDefinitionNumber(0)
+            mesgs.append(fieldDescriptionMesgWithoutIndex)
+        }
+
+        let encoder = Encoder()
+        encoder.write(mesgs: mesgs + recordMesgs)
+        let encodedData = encoder.close()
+
+        let decoder = Decoder(stream: FITSwiftSDK.InputStream(data: encodedData))
+        let mesgListener = FitListener()
+        decoder.addMesgListener(mesgListener)
+
+        try decoder.read()
+
+        let decodedRecordMesgs = mesgListener.fitMessages.recordMesgs
+        #expect(decodedRecordMesgs.count == 2)
+        #expect(decodedRecordMesgs.map { $0.getHeartRate() } == [60, 70])
+        #expect(decodedRecordMesgs.allSatisfy { $0.developerFields.isEmpty })
+    }
+
 }

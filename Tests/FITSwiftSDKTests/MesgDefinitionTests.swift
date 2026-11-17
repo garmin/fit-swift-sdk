@@ -23,6 +23,34 @@ final class MesgDefinitionTests: XCTestCase {
         }
     }
 
+    func test_constructor_withUnsupportedFieldBaseType_throwsError() {
+        let stream = FITSwiftSDK.InputStream(data: Data([
+            0x40,       // Definition header
+            0x00,       // Reserved
+            0x00,       // Little endian
+            0x00, 0x00, // Global message number
+            0x01,       // Number of fields
+            250, 1, 0x7F // Field num, size, unsupported base type
+        ]))
+
+        XCTAssertThrowsError(try MesgDefinition(stream: stream, developerDataLookup: DeveloperDataLookup())) { error in
+            XCTAssertEqual(error as? FieldDefinition.FieldDefinitionError, .unsupportedBaseType(type: 0x7F))
+        }
+    }
+
+    func test_fieldDefinitionConstructor_withUnsupportedBaseType_throwsError() {
+        XCTAssertThrowsError(try FieldDefinition(num: 0, size: 1, type: UInt8(0x7F))) { error in
+            XCTAssertEqual(error as? FieldDefinition.FieldDefinitionError, .unsupportedBaseType(type: 0x7F))
+        }
+    }
+
+    func test_fieldDefinitionConstructor_withSupportedBaseType_doesNotThrow() throws {
+        let fieldDefinition = try FieldDefinition(num: 0, size: 4, type: BaseType.UINT32.rawValue)
+
+        XCTAssertEqual(fieldDefinition.baseType, .UINT32)
+        XCTAssertEqual(fieldDefinition.count, 1)
+    }
+
     func test_constructor_fromMesg_sortsFieldDefsByOrderOfInsertion() throws {
         let mesg = RecordMesg()
         try mesg.setHeartRate(50)
