@@ -150,4 +150,21 @@ struct DeveloperDataLookupTests {
         retrieved = developerDataLookup.getDeveloperFieldDefinition(developerDataIdMesg: developerDataIdMesgOriginal, fieldDescriptionMesg: fieldDescMesgOriginal)
         #expect(retrieved == nil)
     }
+
+    @Test
+    func test_addFieldDescriptionMesg_whenDeveloperDataIndexIsMissing_returnsNilWithoutFatalError() throws {
+        let developerDataIdMesg = DeveloperDataIdMesg()
+        try developerDataIdMesg.setDeveloperDataIndex(0)
+        developerDataLookup.addDeveloperDataIdMesg(mesg: developerDataIdMesg)
+
+        let fieldDescMesg = FieldDescriptionMesg()
+        try fieldDescMesg.setFieldDefinitionNumber(0)
+        #expect(fieldDescMesg.getDeveloperDataIndex() == nil)
+
+        let result = developerDataLookup.addFieldDescriptionMesg(mesg: fieldDescMesg)
+        #expect(result == nil)
+
+        let retrieved = developerDataLookup.getDeveloperFieldDefinition(developerDataIndex: 0, fieldDescriptionNumber: 0)
+        #expect(retrieved == nil)
+    }
 }

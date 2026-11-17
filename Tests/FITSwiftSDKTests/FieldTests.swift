@@ -786,7 +786,7 @@ func createTestFieldWithValue(type: BaseType, value: Any?) throws -> Field {
         let stream = FITSwiftSDK.InputStream(data: data)
 
         let field = Factory.createDefaultField(fieldNum: 0, baseType: BaseType.STRING)
-        let fieldDefinition = FieldDefinition(num: field.num, size: UInt8(data.count), type: field.type)
+        let fieldDefinition = try FieldDefinition(num: field.num, size: UInt8(data.count), type: field.type)
 
         try field.read(stream: stream, size: fieldDefinition.size)
 

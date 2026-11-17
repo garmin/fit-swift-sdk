@@ -343,4 +343,25 @@ final class DecoderTests: XCTestCase {
 
         XCTAssertThrowsError(try decoder.broadcastMesg(fileIdMesg))
     }
+
+    // MARK: Malformed Data Tests
+    func test_read_whenDataSizeOverflows_doesNotTrap() {
+        let decoder = Decoder(stream: FITSwiftSDK.InputStream(data: fitFileDataSizeOverflowsUInt32))
+        XCTAssertThrowsError(try decoder.read())
+    }
+
+    func test_read_whenChainedFileDataSizeOverflowsUInt32_doesNotTrap() {
+        let decoder = Decoder(stream: FITSwiftSDK.InputStream(data: fitFileChainedDataSizeOverflowsUInt32))
+        XCTAssertThrowsError(try decoder.read())
+    }
+
+    func test_read_whenFieldBaseTypeIsInvalidForUnknownField_doesNotTrap() {
+        let decoder = Decoder(stream: FITSwiftSDK.InputStream(data: fitFileInvalidBaseTypeUnknownField))
+        XCTAssertThrowsError(try decoder.read())
+    }
+
+    func test_read_whenAccumulatedFieldValuesExceedUInt8Count_doesNotTrap() {
+        let decoder = Decoder(stream: FITSwiftSDK.InputStream(data: fitFileAccumulatedFieldValuesExceedUInt8Count))
+        XCTAssertThrowsError(try decoder.read())
+    }
 }

@@ -466,3 +466,79 @@ struct MesgReadDevFieldTests {
         #expect(stream.position == recordDataBytes.count - 1)
     }
 }
+
+@Suite
+struct MesgReadDuplicateFieldTests {
+    private let maxFieldSize = Int(FIT.MAX_FIELD_SIZE)
+
+    private func createDeveloperDataLookup() throws -> DeveloperDataLookup {
+        let developerDataIdMesg = DeveloperDataIdMesg()
+        try developerDataIdMesg.setDeveloperDataIndex(2)
+        let fieldDescriptionMesg = FieldDescriptionMesg()
+        try fieldDescriptionMesg.setDeveloperDataIndex(2)
+        try fieldDescriptionMesg.setFieldDefinitionNumber(1)
+        try fieldDescriptionMesg.setFitBaseTypeId(.uint8)
+        let lookup = DeveloperDataLookup()
+        lookup.addDeveloperDataIdMesg(mesg: developerDataIdMesg)
+        lookup.addFieldDescriptionMesg(mesg: fieldDescriptionMesg)
+        return lookup
+    }
+
+    @Test func test_read_whenFieldDefinitionIsDuplicated_throwsDuplicateFieldError() throws {
+        let definitionBytes: [UInt8] = [
+            FIT.HDR_TYPE_DEF_BIT, 0x00, Endianness.little.rawValue,
+            UInt8(Profile.MesgNum.record), 0x00,
+            2,
+            RecordMesg.heartRateFieldNum, UInt8(maxFieldSize), BaseType.UINT8.rawValue,
+            RecordMesg.heartRateFieldNum, UInt8(maxFieldSize), BaseType.UINT8.rawValue
+        ]
+        let dataBytes = [UInt8](repeating: 0x01, count: maxFieldSize * 2)
+
+        let mesgDefinition = try MesgDefinition(stream: FITSwiftSDK.InputStream(data: Data(definitionBytes)), developerDataLookup: DeveloperDataLookup())
+        let mesg = Factory.createMesg(mesgNum: Profile.MesgNum.record)
+
+        #expect(throws: Mesg.MesgError.duplicateField(fieldNum: RecordMesg.heartRateFieldNum)) {
+            try mesg.read(stream: FITSwiftSDK.InputStream(data: Data(dataBytes)), mesgDefinition: mesgDefinition, accumulator: Accumulator())
+        }
+    }
+
+    @Test func test_read_whenAccumulatedFieldDefinitionIsRepeatedPast255Values_throwsDuplicateFieldError() throws {
+        let repeats = 130
+        var definitionBytes: [UInt8] = [
+            FIT.HDR_TYPE_DEF_BIT, 0x00, Endianness.little.rawValue,
+            UInt8(Profile.MesgNum.record), 0x00,
+            UInt8(repeats)
+        ]
+        var dataBytes: [UInt8] = []
+        for index in 0..<repeats {
+            definitionBytes += [RecordMesg.distanceFieldNum, 8, BaseType.UINT32.rawValue]
+            dataBytes += [UInt8(index), 0, 0, 0, UInt8(index), 0, 0, 0]
+        }
+
+        let mesgDefinition = try MesgDefinition(stream: FITSwiftSDK.InputStream(data: Data(definitionBytes)), developerDataLookup: DeveloperDataLookup())
+        let mesg = Factory.createMesg(mesgNum: Profile.MesgNum.record)
+
+        #expect(throws: Mesg.MesgError.duplicateField(fieldNum: RecordMesg.distanceFieldNum)) {
+            try mesg.read(stream: FITSwiftSDK.InputStream(data: Data(dataBytes)), mesgDefinition: mesgDefinition, accumulator: Accumulator())
+        }
+    }
+
+    @Test func test_read_whenDeveloperFieldDefinitionIsDuplicated_throwsDuplicateDeveloperFieldError() throws {
+        let definitionBytes: [UInt8] = [
+            FIT.HDR_TYPE_DEF_BIT | FIT.DEV_DATA_MASK, 0x00, Endianness.little.rawValue,
+            UInt8(Profile.MesgNum.record), 0x00,
+            0,
+            2,
+            1, UInt8(maxFieldSize), 2,
+            1, UInt8(maxFieldSize), 2
+        ]
+        let dataBytes = [UInt8](repeating: 0x01, count: maxFieldSize * 2)
+
+        let mesgDefinition = try MesgDefinition(stream: FITSwiftSDK.InputStream(data: Data(definitionBytes)), developerDataLookup: createDeveloperDataLookup())
+        let mesg = Factory.createMesg(mesgNum: Profile.MesgNum.record)
+
+        #expect(throws: Mesg.MesgError.duplicateDeveloperField(developerDataIndex: 2, fieldNum: 1)) {
+            try mesg.read(stream: FITSwiftSDK.InputStream(data: Data(dataBytes)), mesgDefinition: mesgDefinition, accumulator: Accumulator())
+        }
+    }
+}
